@@ -366,6 +366,12 @@
 
     .editor-tool-group:last-child { border-right: 0; }
 
+    /* Actief gereedschap indicator */
+    .editor-tool-active {
+      background: #e65100 !important;
+      box-shadow: 0 0 0 2px #fff, 0 0 0 4px #e65100;
+    }
+
     .editor-slider {
       width: 120px;
       display: grid;
@@ -1233,6 +1239,10 @@
     let editorTool = 'eraser';
     let rectEraseStart = null;
     let lastDrawPoint = null;
+    const editorPointers = new Map(); // pinch-zoom pointer tracking
+    let pinchInitialDist = 0;
+    let pinchInitialZoom = 1;
+    let isPinching = false;
     let erasing = false;
     let pencilColor = '#000000';
     let favorites = loadFavorites();
@@ -1696,6 +1706,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         editorTool = 'eraser';
         document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
         document.getElementById('pencilColorRow').hidden = true;
+        updateEditorToolButtons();
         pushEditorHistory();
         editorModal.hidden = false;
         requestAnimationFrame(() => { renderEditor(); updateEraserPreview(); });
@@ -1869,9 +1880,28 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       a.click();
     }
 
+    function pinchDistance() {
+      const pts = [...editorPointers.values()];
+      return Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+    }
+
     function startErase(event) {
       if (editorModal.hidden) return;
       event.preventDefault();
+      editorPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (editorPointers.size >= 2) {
+        // Tweede vinger: pinch-zoom starten, teken-actie annuleren
+        isPinching = true;
+        erasing = false;
+        lastDrawPoint = null;
+        rectEraseStart = null;
+        pinchInitialDist = pinchDistance();
+        pinchInitialZoom = editorZoom;
+        return;
+      }
+
+      if (isPinching) return;
       pushEditorHistory();
       erasing = true;
       lastDrawPoint = editorPointToImagePoint(event);
@@ -1882,15 +1912,40 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     }
 
     function moveErase(event) {
-      if (!erasing) return;
+      if (editorModal.hidden) return;
       event.preventDefault();
+      editorPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (isPinching) {
+        if (editorPointers.size >= 2 && pinchInitialDist > 0) {
+          setEditorZoom(pinchInitialZoom * (pinchDistance() / pinchInitialDist));
+        }
+        return;
+      }
+
+      if (!erasing) return;
       if (editorTool === 'eraser') eraseAt(event);
       if (editorTool === 'pencil') drawAt(event);
     }
 
     function stopErase(event) {
-      if (!erasing) return;
+      if (editorModal.hidden) return;
       event.preventDefault();
+      editorPointers.delete(event.pointerId);
+
+      if (isPinching) {
+        if (editorPointers.size < 2) {
+          // Minder dan 2 vingers: pinch-modus beëindigen
+          isPinching = false;
+          erasing = false;
+          lastDrawPoint = null;
+          rectEraseStart = null;
+        }
+        try { editorCanvas.releasePointerCapture(event.pointerId); } catch {}
+        return;
+      }
+
+      if (!erasing) return;
       if (editorTool === 'rect' && rectEraseStart) eraseRectTo(event);
       erasing = false; lastDrawPoint = null; rectEraseStart = null;
       try { editorCanvas.releasePointerCapture(event.pointerId); } catch {}
@@ -2230,10 +2285,17 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     editorContrastButton.addEventListener('click', () => applyImageFilter('contrast'));
     editorBwButton.addEventListener('click', () => applyImageFilter('bw'));
     editorSaveButton.addEventListener('click', () => saveEditorPng());
+    function updateEditorToolButtons() {
+      eraserButton.classList.toggle('editor-tool-active', editorTool === 'eraser');
+      pencilButton.classList.toggle('editor-tool-active', editorTool === 'pencil');
+      rectEraseButton.classList.toggle('editor-tool-active', editorTool === 'rect');
+    }
+
     eraserButton.addEventListener('click', () => {
       editorTool = 'eraser';
       document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
       document.getElementById('pencilColorRow').hidden = true;
+      updateEditorToolButtons();
       setStatus('Gum actief.');
     });
     pencilButton.addEventListener('click', () => {
@@ -2242,12 +2304,14 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       updateEraserPreview();
       document.getElementById('toolSizeLabel').textContent = 'Potloodgrootte';
       document.getElementById('pencilColorRow').hidden = false;
+      updateEditorToolButtons();
       setStatus('Potlood actief.');
     });
     rectEraseButton.addEventListener('click', () => {
       editorTool = 'rect';
       document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
       document.getElementById('pencilColorRow').hidden = true;
+      updateEditorToolButtons();
       setStatus('Rechthoekgum actief.');
     });
     eraserSize.addEventListener('input', updateEraserPreview);
