@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kleurplaten Zoeken</title>
+  <link rel="icon" href="icon.ico" type="image/x-icon">
   <style>
     * { box-sizing: border-box; }
 
@@ -1645,8 +1646,14 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       if (!currentImageUrl) return;
       try {
         setStatus('Bewerker laden...');
-        const src = currentImageUrl.startsWith('data:') ? currentImageUrl : proxyUrl(currentImageUrl);
-        const image = await loadImg(src, !currentImageUrl.startsWith('data:'));
+        let image;
+        if (currentImageUrl.startsWith('data:')) {
+          image = await loadImg(currentImageUrl);
+        } else if (viewerBitmap && viewerImage.complete && viewerImage.naturalWidth > 0) {
+          image = viewerImage;
+        } else {
+          image = await loadImg(proxyUrl(currentImageUrl), true);
+        }
         const width = image.naturalWidth || image.width;
         const height = image.naturalHeight || image.height;
         editorSourceCanvas.width = width;
