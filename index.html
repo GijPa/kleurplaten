@@ -657,28 +657,13 @@
       .editor-tool-group { border-right: 0; padding-right: 0; }
     }
 
-    /* Print overlay — shown only when print button is pressed */
-    #printOverlay {
-      display: none;
-      position: fixed; inset: 0; z-index: 9999;
-      background: #fff;
-      align-items: center; justify-content: center;
-      box-sizing: border-box;
-    }
-    #printOverlay img { display: block; max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; }
-
     @media print {
-      /* With overlay: show only the image, page margin via @page is set dynamically */
-      body:has(#printOverlay.active) > *:not(#printOverlay) { display: none !important; }
-      #printOverlay.active { display: flex !important; }
-
-      /* Without overlay (Ctrl+P): hide chrome, show viewer */
-      body:not(:has(#printOverlay.active)) > *:not(main),
-      .results-panel, .viewer-actions, .viewer-info { display: none !important; }
-      .crop-controls, .editor-modal { display: none !important; }
-      body:not(:has(#printOverlay.active)) main,
-      body:not(:has(#printOverlay.active)) .viewer-panel,
-      body:not(:has(#printOverlay.active)) .viewer { display: block; border: 0; overflow: visible; padding: 0; width: 100%; height: 100vh; }
+      @page { size: A4 portrait; margin: 10mm; }
+      body { display: block; background: #fff; width: 100%; height: 100vh; }
+      body > *:not(main), .results-panel, .viewer-actions, .viewer-info { display: none !important; }
+      .crop-controls { display: none !important; }
+      .editor-modal { display: none !important; }
+      main, .viewer-panel, .viewer { display: block; border: 0; overflow: visible; padding: 0; width: 100%; height: 100vh; }
       .print-view { border: 0; border-radius: 0; background: #fff; width: 100%; height: 100vh; padding: 0; display: block; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
       .a4-page { display: none !important; }
     }
@@ -1594,20 +1579,15 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       }
     }
 
-    async function downloadPdfBytes(bytes) {
+    function downloadPdfBytes(bytes) {
       const blob = new Blob([bytes], { type:'application/pdf' });
-      // On mobile: use Web Share API so iOS shows "Printen" in share sheet (no website URL)
-      if (navigator.canShare) {
-        const file = new File([blob], 'kleurplaat.pdf', { type:'application/pdf' });
-        if (navigator.canShare({ files:[file] })) {
-          try { await navigator.share({ files:[file], title:'Kleurplaat' }); return; } catch(e) { /* cancelled or not supported, fall through */ }
-        }
-      }
-      // Desktop fallback: trigger download
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'kleurplaat.pdf';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      a.href = url;
+      a.download = 'kleurplaat.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
     }
 
@@ -2101,51 +2081,10 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     // ===== EVENT LISTENERS =====
     form.addEventListener('submit', e => { e.preventDefault(); search(); });
-    function printImageInPage(imageUrl) {
-      const overlay = document.getElementById('printOverlay');
-      const overlayImg = document.getElementById('printOverlayImg');
-      const landscape = printOrientation.value === 'landscape';
-      const marginMap = { normal: '10mm', small: '5mm', none: '0' };
-      const pad = marginMap[printMargin.value] || '10mm';
-
-      // Set @page for this print (margin:0 so browser won't add URL header/footer)
-      let ps = document.getElementById('printPageStyle');
-      if (!ps) { ps = document.createElement('style'); ps.id = 'printPageStyle'; document.head.appendChild(ps); }
-      ps.textContent = `@media print { @page { size: ${landscape ? 'A4 landscape' : 'A4 portrait'}; margin: 0; } #printOverlay.active { padding: ${pad}; } }`;
-
-      overlayImg.src = imageUrl;
-      overlay.classList.add('active');
-
-      const doPrint = () => {
-        window.print();
-        const cleanup = () => {
-          overlay.classList.remove('active');
-          overlayImg.src = '';
-          updatePrintPreview(); // restore normal @page style
-        };
-        window.addEventListener('afterprint', cleanup, { once: true });
-        // Fallback cleanup if afterprint doesn't fire (some mobile browsers)
-        setTimeout(() => { if (overlay.classList.contains('active')) cleanup(); }, 60000);
-      };
-
-      if (overlayImg.complete && overlayImg.naturalWidth > 0) {
-        setTimeout(doPrint, 80);
-      } else {
-        overlayImg.onload = () => setTimeout(doPrint, 80);
-        overlayImg.onerror = () => { overlay.classList.remove('active'); overlayImg.src = ''; };
-      }
-    }
-
     printButton.addEventListener('click', () => {
-      if (cropStage.hidden || !currentImageUrl) return;
-      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      if (isMobile) {
-        // Mobile/iOS: generate PDF and share via share sheet (shows "Printen" without website URL)
-        openPrintPdf();
-      } else {
-        // Desktop: overlay print (no URL footer in Chrome/Edge)
-        printImageInPage(currentImageUrl);
-      }
+      if (cropStage.hidden) return;
+      const imgUrl = preparePrintImage() || currentImageUrl;
+      if (imgUrl) openPrintWindow(imgUrl);
     });
     pdfButton.addEventListener('click', () => { if (!cropStage.hidden) openPrintPdf(); });
     clearButton.addEventListener('click', () => clearSelection());
@@ -2238,6 +2177,5 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     initColorSwatches();
     renderSearchHistory();
   </script>
-  <div id="printOverlay"><img id="printOverlayImg" alt="Kleurplaat"></div>
 </body>
 </html>
