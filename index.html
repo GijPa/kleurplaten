@@ -814,6 +814,7 @@
           <button id="eraserButton" type="button" title="Gum">&#9003;</button>
           <button id="pencilButton" type="button" title="Potlood">&#9998;</button>
           <button id="rectEraseButton" type="button" title="Rechthoekgum">&#9645;</button>
+          <button id="panButton" type="button" title="Bewegen">&#9995;</button>
           <label class="editor-slider">
             <span id="toolSizeLabel">Gumgrootte</span>
             <input id="eraserSize" type="range" min="8" max="80" value="28">
@@ -1202,6 +1203,7 @@
     const eraserButton = document.getElementById('eraserButton');
     const pencilButton = document.getElementById('pencilButton');
     const rectEraseButton = document.getElementById('rectEraseButton');
+    const panButton = document.getElementById('panButton');
     const eraserSize = document.getElementById('eraserSize');
     const eraserPreviewSize = document.getElementById('eraserPreviewSize');
     const eraserPreviewLabel = document.getElementById('eraserPreviewLabel');
@@ -1243,6 +1245,12 @@
     let pinchInitialDist = 0;
     let pinchInitialZoom = 1;
     let isPinching = false;
+    let editorPanX = 0;
+    let editorPanY = 0;
+    let pinchStartPanX = 0;
+    let pinchStartPanY = 0;
+    let pinchStartMidX = 0;
+    let pinchStartMidY = 0;
     let erasing = false;
     let pencilColor = '#000000';
     let favorites = loadFavorites();
@@ -1703,6 +1711,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         editorHistory = [];
         editorRedoHistory = [];
         editorZoom = 1;
+        editorPanX = 0;
+        editorPanY = 0;
         editorTool = 'eraser';
         document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
         document.getElementById('pencilColorRow').hidden = true;
@@ -1723,15 +1733,19 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     function renderEditor() {
       const cr = getEditorCropRect();
       const slot = editorCanvas.parentElement;
-      const maxW = Math.max(240, slot.clientWidth - 24);
-      const maxH = Math.max(240, slot.clientHeight - 24);
-      const baseScale = Math.min(maxW / cr.width, maxH / cr.height, 1);
+      const canW = Math.max(1, Math.floor(Math.max(240, slot.clientWidth - 24)));
+      const canH = Math.max(1, Math.floor(Math.max(240, slot.clientHeight - 24)));
+      if (editorCanvas.width !== canW) editorCanvas.width = canW;
+      if (editorCanvas.height !== canH) editorCanvas.height = canH;
+      const baseScale = Math.min(canW / cr.width, canH / cr.height, 1);
       const scale = baseScale * editorZoom;
-      editorCanvas.width = Math.max(1, Math.round(cr.width * scale));
-      editorCanvas.height = Math.max(1, Math.round(cr.height * scale));
+      const imgCanW = cr.width * scale;
+      const imgCanH = cr.height * scale;
+      editorPanX = Math.max(0, Math.min(Math.max(0, imgCanW - canW), editorPanX));
+      editorPanY = Math.max(0, Math.min(Math.max(0, imgCanH - canH), editorPanY));
       editorCtx.fillStyle = '#fff';
-      editorCtx.fillRect(0, 0, editorCanvas.width, editorCanvas.height);
-      editorCtx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, 0, 0, editorCanvas.width, editorCanvas.height);
+      editorCtx.fillRect(0, 0, canW, canH);
+      editorCtx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, -editorPanX, -editorPanY, imgCanW, imgCanH);
     }
 
     function updateEraserPreview() {
@@ -1806,7 +1820,25 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       editorCrop = { ...state.crop };
     }
 
-    function setEditorZoom(v) { editorZoom = Math.max(0.25, Math.min(5, v)); renderEditor(); }
+    function setEditorZoom(v, screenX, screenY) {
+      const cr = getEditorCropRect();
+      const slot = editorCanvas.parentElement;
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const oldScale = baseScale * editorZoom;
+      editorZoom = Math.max(0.25, Math.min(5, v));
+      const newScale = baseScale * editorZoom;
+      if (screenX !== undefined && screenY !== undefined) {
+        const rect = editorCanvas.getBoundingClientRect();
+        const scaleCSS = editorCanvas.width / rect.width;
+        const cx = (screenX - rect.left) * scaleCSS;
+        const cy = (screenY - rect.top) * scaleCSS;
+        const imgX = (cx + editorPanX) / oldScale;
+        const imgY = (cy + editorPanY) / oldScale;
+        editorPanX = imgX * newScale - cx;
+        editorPanY = imgY * newScale - cy;
+      }
+      renderEditor();
+    }
 
     function rotateEditor(degrees) {
       pushEditorHistory();
@@ -1885,23 +1917,43 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       return Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
     }
 
+    function pinchMidpoint() {
+      const pts = [...editorPointers.values()];
+      return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+    }
+
     function startErase(event) {
       if (editorModal.hidden) return;
       event.preventDefault();
       editorPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
       if (editorPointers.size >= 2) {
-        // Tweede vinger: pinch-zoom starten, teken-actie annuleren
         isPinching = true;
         erasing = false;
         lastDrawPoint = null;
         rectEraseStart = null;
         pinchInitialDist = pinchDistance();
         pinchInitialZoom = editorZoom;
+        pinchStartPanX = editorPanX;
+        pinchStartPanY = editorPanY;
+        const mid = pinchMidpoint();
+        const rect = editorCanvas.getBoundingClientRect();
+        const scaleCSS = editorCanvas.width / rect.width;
+        pinchStartMidX = (mid.x - rect.left) * scaleCSS;
+        pinchStartMidY = (mid.y - rect.top) * scaleCSS;
         return;
       }
 
       if (isPinching) return;
+
+      if (editorTool === 'pan') {
+        erasing = true;
+        lastDrawPoint = { x: event.clientX, y: event.clientY };
+        editorCanvas.style.cursor = 'grabbing';
+        editorCanvas.setPointerCapture(event.pointerId);
+        return;
+      }
+
       pushEditorHistory();
       erasing = true;
       lastDrawPoint = editorPointToImagePoint(event);
@@ -1918,12 +1970,39 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
       if (isPinching) {
         if (editorPointers.size >= 2 && pinchInitialDist > 0) {
-          setEditorZoom(pinchInitialZoom * (pinchDistance() / pinchInitialDist));
+          const cr = getEditorCropRect();
+          const slot = editorCanvas.parentElement;
+          const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+          const newZoom = Math.max(0.25, Math.min(5, pinchInitialZoom * (pinchDistance() / pinchInitialDist)));
+          const oldScale = baseScale * pinchInitialZoom;
+          const newScale = baseScale * newZoom;
+          const imgX = (pinchStartMidX + pinchStartPanX) / oldScale;
+          const imgY = (pinchStartMidY + pinchStartPanY) / oldScale;
+          const mid = pinchMidpoint();
+          const rect = editorCanvas.getBoundingClientRect();
+          const scaleCSS = editorCanvas.width / rect.width;
+          const curMidX = (mid.x - rect.left) * scaleCSS;
+          const curMidY = (mid.y - rect.top) * scaleCSS;
+          editorZoom = newZoom;
+          editorPanX = imgX * newScale - curMidX;
+          editorPanY = imgY * newScale - curMidY;
+          renderEditor();
         }
         return;
       }
 
       if (!erasing) return;
+
+      if (editorTool === 'pan') {
+        const rect = editorCanvas.getBoundingClientRect();
+        const scaleCSS = editorCanvas.width / rect.width;
+        editorPanX -= (event.clientX - lastDrawPoint.x) * scaleCSS;
+        editorPanY -= (event.clientY - lastDrawPoint.y) * scaleCSS;
+        lastDrawPoint = { x: event.clientX, y: event.clientY };
+        renderEditor();
+        return;
+      }
+
       if (editorTool === 'eraser') eraseAt(event);
       if (editorTool === 'pencil') drawAt(event);
     }
@@ -1935,7 +2014,6 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
       if (isPinching) {
         if (editorPointers.size < 2) {
-          // Minder dan 2 vingers: pinch-modus beëindigen
           isPinching = false;
           erasing = false;
           lastDrawPoint = null;
@@ -1946,6 +2024,15 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       }
 
       if (!erasing) return;
+
+      if (editorTool === 'pan') {
+        erasing = false;
+        lastDrawPoint = null;
+        editorCanvas.style.cursor = 'grab';
+        try { editorCanvas.releasePointerCapture(event.pointerId); } catch {}
+        return;
+      }
+
       if (editorTool === 'rect' && rectEraseStart) eraseRectTo(event);
       erasing = false; lastDrawPoint = null; rectEraseStart = null;
       try { editorCanvas.releasePointerCapture(event.pointerId); } catch {}
@@ -1953,9 +2040,10 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     function eraseAt(event) {
       const point = editorPointToImagePoint(event);
-      const rect = editorCanvas.getBoundingClientRect();
       const cr = getEditorCropRect();
-      const sz = Number(eraserSize.value) * (cr.width / rect.width);
+      const slot = editorCanvas.parentElement;
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const sz = Number(eraserSize.value) / (baseScale * editorZoom);
       const from = lastDrawPoint || point;
       editorSourceCtx.save();
       editorSourceCtx.strokeStyle = '#fff';
@@ -1973,9 +2061,10 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     function drawAt(event) {
       const point = editorPointToImagePoint(event);
-      const rect = editorCanvas.getBoundingClientRect();
       const cr = getEditorCropRect();
-      const sz = Math.max(1, Number(eraserSize.value) * (cr.width / rect.width));
+      const slot = editorCanvas.parentElement;
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const sz = Math.max(1, Number(eraserSize.value) / (baseScale * editorZoom));
       editorSourceCtx.save();
       editorSourceCtx.strokeStyle = pencilColor;
       editorSourceCtx.lineWidth = sz;
@@ -2004,10 +2093,13 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     function editorPointToImagePoint(event) {
       const rect = editorCanvas.getBoundingClientRect();
       const cr = getEditorCropRect();
-      return {
-        x: cr.x + ((event.clientX - rect.left) / rect.width) * cr.width,
-        y: cr.y + ((event.clientY - rect.top) / rect.height) * cr.height,
-      };
+      const slot = editorCanvas.parentElement;
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const scale = baseScale * editorZoom;
+      const scaleCSS = editorCanvas.width / rect.width;
+      const cx = (event.clientX - rect.left) * scaleCSS + editorPanX;
+      const cy = (event.clientY - rect.top) * scaleCSS + editorPanY;
+      return { x: cr.x + cx / scale, y: cr.y + cy / scale };
     }
 
     async function applyEditorChanges() {
@@ -2279,9 +2371,15 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     editorRotateRight.addEventListener('click', () => rotateEditor(90));
     editorFlipHorizontal.addEventListener('click', () => flipEditor('horizontal'));
     editorFlipVertical.addEventListener('click', () => flipEditor('vertical'));
-    editorZoomOut.addEventListener('click', () => setEditorZoom(editorZoom / 1.25));
-    editorFitButton.addEventListener('click', () => setEditorZoom(1));
-    editorZoomIn.addEventListener('click', () => setEditorZoom(editorZoom * 1.25));
+    editorZoomOut.addEventListener('click', () => {
+      const r = editorCanvas.getBoundingClientRect();
+      setEditorZoom(editorZoom / 1.25, r.left + r.width / 2, r.top + r.height / 2);
+    });
+    editorFitButton.addEventListener('click', () => { editorPanX = 0; editorPanY = 0; setEditorZoom(1); });
+    editorZoomIn.addEventListener('click', () => {
+      const r = editorCanvas.getBoundingClientRect();
+      setEditorZoom(editorZoom * 1.25, r.left + r.width / 2, r.top + r.height / 2);
+    });
     editorContrastButton.addEventListener('click', () => applyImageFilter('contrast'));
     editorBwButton.addEventListener('click', () => applyImageFilter('bw'));
     editorSaveButton.addEventListener('click', () => saveEditorPng());
@@ -2289,6 +2387,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       eraserButton.classList.toggle('editor-tool-active', editorTool === 'eraser');
       pencilButton.classList.toggle('editor-tool-active', editorTool === 'pencil');
       rectEraseButton.classList.toggle('editor-tool-active', editorTool === 'rect');
+      panButton.classList.toggle('editor-tool-active', editorTool === 'pan');
+      editorCanvas.style.cursor = editorTool === 'pan' ? 'grab' : 'crosshair';
     }
 
     eraserButton.addEventListener('click', () => {
@@ -2313,6 +2413,13 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       document.getElementById('pencilColorRow').hidden = true;
       updateEditorToolButtons();
       setStatus('Rechthoekgum actief.');
+    });
+    panButton.addEventListener('click', () => {
+      editorTool = 'pan';
+      document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
+      document.getElementById('pencilColorRow').hidden = true;
+      updateEditorToolButtons();
+      setStatus('Bewegen actief.');
     });
     eraserSize.addEventListener('input', updateEraserPreview);
     editorCanvas.addEventListener('pointerdown', startErase);
