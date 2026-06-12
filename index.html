@@ -743,6 +743,7 @@
       <div class="viewer-actions">
         <button class="green" id="printButton" type="button" disabled>Printen</button>
         <button id="pdfButton" type="button" disabled>PDF</button>
+        <button id="shareButton" type="button" disabled>Nieuwe Print</button>
         <button id="editButton" type="button" disabled>Bewerken</button>
         <button class="icon-button" id="viewerFavoriteButton" type="button" disabled title="Favoriet">&#9825;</button>
         <button class="secondary" id="clearButton" type="button" disabled>Wissen</button>
@@ -1160,6 +1161,7 @@
     const viewerInfo = document.getElementById('viewerInfo');
     const printButton = document.getElementById('printButton');
     const pdfButton = document.getElementById('pdfButton');
+    const shareButton = document.getElementById('shareButton');
     const editButton = document.getElementById('editButton');
     const viewerFavoriteButton = document.getElementById('viewerFavoriteButton');
     const clearButton = document.getElementById('clearButton');
@@ -1405,6 +1407,7 @@
       sourceLink.hidden = false;
       printButton.disabled = false;
       pdfButton.disabled = false;
+      shareButton.disabled = false;
       editButton.disabled = false;
       viewerFavoriteButton.disabled = false;
       clearButton.disabled = false;
@@ -1431,6 +1434,7 @@
       sourceLink.hidden = true;
       printButton.disabled = true;
       pdfButton.disabled = true;
+      shareButton.disabled = true;
       editButton.disabled = true;
       viewerFavoriteButton.disabled = true;
       viewerFavoriteButton.textContent = '♡';
@@ -2087,6 +2091,52 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       if (imgUrl) openPrintWindow(imgUrl);
     });
     pdfButton.addEventListener('click', () => { if (!cropStage.hidden) openPrintPdf(); });
+
+    async function openSharePrint() {
+      if (!currentImageUrl) return;
+      setStatus('Bezig met voorbereiden...');
+      shareButton.disabled = true;
+      try {
+        // Load image via CORS proxy so we can draw it to canvas
+        const img = await loadImg(imageProxyUrl(currentImageUrl), true);
+        const maxSide = 3200;
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || 800, img.naturalHeight || 600));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round((img.naturalWidth || 800) * scale));
+        canvas.height = Math.max(1, Math.round((img.naturalHeight || 600) * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const pdfBytes = buildPdf(canvas.toDataURL('image/png'), printOrientation.value, printMargin.value);
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const file = new File([blob], 'kleurplaat.pdf', { type: 'application/pdf' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Kleurplaat' });
+          setStatus('Gedeeld.');
+        } else {
+          // Browser doesn't support file sharing — fall back to PDF download
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'kleurplaat.pdf';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 300000);
+          setStatus('PDF opgeslagen (delen niet ondersteund op dit apparaat).');
+        }
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          setStatus('Delen geannuleerd.');
+        } else {
+          setStatus(`Nieuwe Print mislukt: ${e.message}`);
+        }
+      } finally {
+        shareButton.disabled = false;
+      }
+    }
+
+    shareButton.addEventListener('click', () => { if (!cropStage.hidden) openSharePrint(); });
     clearButton.addEventListener('click', () => clearSelection());
     editButton.addEventListener('click', () => openEditor());
     favoritesViewButton.addEventListener('click', () => {
