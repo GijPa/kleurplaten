@@ -1,0 +1,2166 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kleurplaten Zoeken</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      height: 100vh;
+      font-family: Tahoma, Arial, sans-serif;
+      color: #1d2430;
+      background: #edf1f5;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      overflow: hidden;
+    }
+
+    header {
+      background: #1a4a7a;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .status {
+      font-size: 12px;
+      opacity: 0.85;
+      text-align: right;
+    }
+
+    .toolbar {
+      background: #fff;
+      border-bottom: 2px solid #c6d2df;
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto auto auto;
+      align-items: end;
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #344255;
+    }
+
+    input, select, button { font: inherit; }
+
+    input, select {
+      min-height: 36px;
+      border: 1px solid #aeb9c5;
+      border-radius: 4px;
+      background: #fff;
+      padding: 7px 9px;
+      color: #1d2430;
+    }
+
+    input:focus, select:focus {
+      outline: 2px solid #b8d7f4;
+      border-color: #1a4a7a;
+    }
+
+    button {
+      min-height: 36px;
+      border: 0;
+      border-radius: 4px;
+      padding: 8px 13px;
+      background: #1a4a7a;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.secondary { background: #5f6d7a; }
+    button.green { background: #2e7d32; }
+    button.favorite-active { background: #c73962; }
+
+    .icon-button {
+      min-width: 40px;
+      width: 40px;
+      height: 36px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    button:disabled { background: #9aa6b2; cursor: not-allowed; }
+
+    .parent-settings {
+      grid-column: 1 / -1;
+      justify-self: start;
+      border: 0;
+      background: transparent;
+      padding: 0;
+    }
+
+    .parent-settings summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: #647386;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .parent-grid {
+      margin-top: 10px;
+      border: 1px solid #c9d4df;
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+    }
+
+    .check-label input { width: 18px; height: 18px; }
+
+    .hidden, .advanced-setting.hidden { display: none; }
+
+    main {
+      min-height: 0;
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) minmax(360px, 42vw);
+      overflow: hidden;
+    }
+
+    .results-panel, .viewer-panel { min-height: 0; overflow: hidden; }
+
+    .results-panel { padding: 14px; overflow: auto; }
+
+    .hint, .empty, .error {
+      background: #fff;
+      border: 1px solid #c9d4df;
+      border-radius: 6px;
+      padding: 14px;
+      line-height: 1.45;
+      color: #344255;
+    }
+
+    .error { border-color: #d49b9b; background: #fff5f5; color: #8a1f1f; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .tile {
+      border: 1px solid #c8d4e3;
+      border-radius: 6px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      cursor: pointer;
+      text-align: left;
+      color: inherit;
+      padding: 0;
+      min-height: 275px;
+      position: relative;
+    }
+
+    .tile-favorite {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 2;
+      width: 32px;
+      min-width: 32px;
+      height: 32px;
+      min-height: 32px;
+      border-radius: 50%;
+      padding: 0;
+      background: rgba(31, 85, 136, 0.92);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .tile-favorite.active { background: #c73962; }
+
+    .tile:hover, .tile.selected {
+      outline: 3px solid #74a9dc;
+      outline-offset: -3px;
+    }
+
+    .thumb {
+      width: 100%;
+      height: 210px;
+      background: #f6f8fb;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      flex: 0 0 210px;
+    }
+
+    .thumb img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .meta { padding: 8px; display: grid; gap: 5px; }
+
+    .title {
+      font-size: 12px;
+      line-height: 1.25;
+      min-height: 30px;
+      max-height: 45px;
+      overflow: hidden;
+      color: #1d2430;
+    }
+
+    .source {
+      font-size: 11px;
+      color: #647386;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .viewer-panel {
+      border-left: 2px solid #c6d2df;
+      background: #f8fafc;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .viewer-actions {
+      background: #fff;
+      border-bottom: 1px solid #c9d4df;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .print-options {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .print-options label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .print-options select { min-height: 34px; padding: 5px 8px; }
+
+    .editor-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(18,27,38,0.72);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      padding: 18px;
+    }
+
+    .editor-modal[hidden] { display: none; }
+
+    .editor-header, .editor-toolbar {
+      background: #fff;
+      border: 1px solid #c9d4df;
+    }
+
+    .editor-header {
+      border-radius: 6px 6px 0 0;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .editor-header h2 { margin: 0; font-size: 16px; }
+
+    .editor-body {
+      min-height: 0;
+      background: #f8fafc;
+      border: 1px solid #c9d4df;
+      border-top: 0;
+      border-radius: 0 0 6px 6px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .editor-toolbar {
+      border: 0;
+      border-bottom: 1px solid #c9d4df;
+      padding: 8px;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      overflow: visible;
+    }
+
+    .editor-toolbar button {
+      width: 36px;
+      min-width: 36px;
+      height: 34px;
+      min-height: 34px;
+      padding: 0;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .editor-tool-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: 8px;
+      border-right: 1px solid #dbe3ec;
+    }
+
+    .editor-tool-group:last-child { border-right: 0; }
+
+    .editor-slider {
+      width: 120px;
+      display: grid;
+      gap: 2px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .eraser-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+    }
+
+    .eraser-preview-box {
+      width: 38px;
+      height: 38px;
+      border: 1px solid #aeb9c5;
+      background: #fff;
+      display: grid;
+      place-items: center;
+    }
+
+    .eraser-preview-size { background: #1a4a7a; opacity: 0.82; }
+
+    #editorCanvas {
+      background: #fff;
+      cursor: crosshair;
+      position: relative;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    .eraser-cursor {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 28px;
+      height: 28px;
+      border: 2px solid #1a4a7a;
+      background: rgba(26,74,122,0.12);
+      pointer-events: none;
+      transform: translate(-9999px, -9999px);
+      z-index: 5;
+    }
+
+    .viewer-actions a {
+      color: #1a4a7a;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      margin-left: auto;
+    }
+
+    .viewer-actions a:hover { text-decoration: underline; }
+
+    .viewer {
+      min-height: 0;
+      height: 100%;
+      padding: 16px;
+      display: grid;
+      grid-template-rows: minmax(0,1fr) auto auto;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .print-view {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      background: #dcecff;
+      border: 1px solid #c9d4df;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .a4-page {
+      width: min(100%, calc((100vh - 210px) * var(--a4-ratio, 0.707)));
+      height: min(100%, calc((100vw - 62vw) / var(--a4-ratio, 0.707)));
+      max-width: 100%;
+      max-height: 100%;
+      aspect-ratio: var(--a4-ratio, 0.707);
+      background: #fff;
+      border: 1px solid #b8c8d8;
+      box-shadow: 0 4px 16px rgba(25,55,90,0.18);
+      display: grid;
+      place-items: center;
+      padding: var(--paper-margin-preview, 4%);
+      overflow: hidden;
+    }
+
+    .a4-page.landscape { --a4-ratio: 1.414; }
+
+    .print-view img { max-width: 100%; max-height: 100%; display: block; }
+
+    .crop-stage {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .crop-frame {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .crop-frame img {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+      display: block;
+      transform: none !important;
+    }
+
+    #viewerCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #fff;
+    }
+
+    .crop-controls {
+      display: none;
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 8px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .crop-controls button {
+      min-width: 42px;
+      min-height: 34px;
+      padding: 7px 10px;
+      background: #5f6d7a;
+    }
+
+    .crop-controls .top { grid-column: 2; grid-row: 1; }
+    .crop-controls .left { grid-column: 1; grid-row: 2; justify-self: end; }
+    .crop-controls .reset { grid-column: 2; grid-row: 2; background: #1a4a7a; }
+    .crop-controls .right { grid-column: 3; grid-row: 2; justify-self: start; }
+    .crop-controls .bottom { grid-column: 2; grid-row: 3; }
+
+    .viewer-info {
+      font-size: 12px;
+      color: #4b596b;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .editor-crop-shell {
+      display: grid;
+      grid-template-columns: 28px minmax(0,1fr) 28px;
+      grid-template-rows: 28px minmax(0,1fr) 28px;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      gap: 0;
+      align-items: stretch;
+      justify-items: stretch;
+    }
+
+    .editor-crop-shell button {
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border-radius: 4px;
+      background: #eef3f8;
+      color: #1d2430;
+      border: 1px solid #c9d4df;
+      font-size: 17px;
+    }
+
+    .editor-crop-shell .crop-top { grid-column: 2; grid-row: 1; }
+    .editor-crop-shell .crop-left { grid-column: 1; grid-row: 2; }
+    .editor-crop-shell .crop-right { grid-column: 3; grid-row: 2; }
+    .editor-crop-shell .crop-bottom { grid-column: 2; grid-row: 3; }
+
+    .editor-canvas-slot {
+      grid-column: 2;
+      grid-row: 2;
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+      position: relative;
+      border: 1px solid #aeb9c5;
+      background: #dff0ff;
+    }
+
+    .editor-canvas-wrap {
+      min-width: 0;
+      min-height: 0;
+      padding: 14px;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+      position: relative;
+    }
+
+    .pencil-color-row {
+      flex: 0 0 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 2px 0;
+    }
+    .pencil-color-row[hidden] { display: none !important; }
+    #colorSwatches { display: flex; gap: 4px; flex-wrap: nowrap; align-items: center; }
+    .color-swatch {
+      width: 22px; height: 22px; min-width: 22px; min-height: 22px;
+      border-radius: 50%; border: 2px solid rgba(0,0,0,0.15);
+      cursor: pointer; padding: 0;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .color-swatch:hover { transform: scale(1.2); }
+    .color-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1a4a7a; }
+    #customColorInput {
+      width: 28px; height: 28px; border: 1px solid #aeb9c5;
+      border-radius: 4px; padding: 1px 2px; cursor: pointer; background: none;
+    }
+
+    .search-history-bar {
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 5px 14px;
+      background: #f0f4f8;
+      border-bottom: 1px solid #c6d2df;
+      align-items: center;
+    }
+    .search-history-bar:not([hidden]) { display: flex; }
+    .history-chip {
+      background: #fff; border: 1px solid #c6d2df; border-radius: 12px;
+      padding: 2px 10px; font-size: 12px; font-family: inherit;
+      cursor: pointer; color: #344255; line-height: 1.5; white-space: nowrap;
+    }
+    .history-chip:hover { background: #d4e4f5; border-color: #1a4a7a; color: #1a4a7a; }
+
+    @media (max-width: 900px) {
+      body { height: auto; min-height: 100vh; overflow: auto; grid-template-rows: auto auto auto auto; }
+      .toolbar { grid-template-columns: 1fr 1fr; position: sticky; top: 0; z-index: 5; }
+      main { grid-template-columns: 1fr; height: auto; overflow: visible; }
+      .results-panel { height: 58vh; min-height: 360px; border-bottom: 2px solid #c6d2df; }
+      .viewer-panel { border-left: 0; border-top: 2px solid #c6d2df; height: 72vh; min-height: 560px; }
+      .viewer { padding: 12px; }
+      .a4-page {
+        width: min(100%, calc((72vh - 170px) * var(--a4-ratio, 0.707)));
+        height: min(100%, calc((100vw - 42px) / var(--a4-ratio, 0.707)));
+      }
+    }
+
+    @media (max-width: 560px) {
+      header { align-items: flex-start; flex-direction: column; gap: 6px; }
+      .status { text-align: left; }
+      .toolbar { grid-template-columns: 1fr; gap: 8px; }
+      button { min-height: 42px; }
+      .viewer-actions { gap: 6px; }
+      .viewer-actions > button:not(.icon-button) { flex: 1 1 108px; }
+      .print-options { width: 100%; }
+      .print-options label { flex: 1 1 140px; }
+      .print-options select { flex: 1; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(138px,1fr)); gap: 10px; }
+      .tile { min-height: 238px; }
+      .thumb { height: 170px; flex-basis: 170px; }
+      .results-panel { height: 56vh; min-height: 330px; padding: 10px; }
+      .viewer-panel { height: 78vh; min-height: 520px; }
+      .viewer { grid-template-rows: minmax(0,1fr) auto; gap: 8px; }
+      .crop-controls { display: none !important; }
+      .a4-page {
+        width: min(100%, calc((78vh - 180px) * var(--a4-ratio, 0.707)));
+        height: min(100%, calc((100vw - 36px) / var(--a4-ratio, 0.707)));
+      }
+      .viewer-info { font-size: 11px; }
+      .editor-modal { padding: 8px; }
+      .editor-toolbar { gap: 6px; }
+      .editor-tool-group { border-right: 0; padding-right: 0; }
+    }
+
+    @media print {
+      @page { size: A4 portrait; margin: 10mm; }
+      body { display: block; background: #fff; width: 100%; height: 100vh; }
+      body > *:not(main), .results-panel, .viewer-actions, .viewer-info { display: none !important; }
+      .crop-controls { display: none !important; }
+      .editor-modal { display: none !important; }
+      main, .viewer-panel, .viewer { display: block; border: 0; overflow: visible; padding: 0; width: 100%; height: 100vh; }
+      .print-view { border: 0; border-radius: 0; background: #fff; width: 100%; height: 100vh; padding: 0; display: block; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
+      .a4-page { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kleurplaten zoeken</h1>
+    <div class="status" id="status">Kies een zoekterm en klik op Zoeken.</div>
+  </header>
+
+  <form class="toolbar" id="searchForm">
+    <label>
+      Zoekterm
+      <input id="query" type="search" value="" placeholder="Bijv: giraffe, hond, prinses..." autocomplete="off">
+    </label>
+
+    <label>
+      Bron
+      <select id="provider" class="advanced-setting">
+        <option value="ddgs" selected>Internet afbeeldingen</option>
+        <option value="all">Internet + Commons + Openverse</option>
+        <option value="commons">Wikimedia Commons</option>
+        <option value="openverse">Openverse</option>
+      </select>
+    </label>
+
+    <label>
+      Aantal
+      <select id="count" class="advanced-setting">
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+      </select>
+    </label>
+
+    <button id="searchButton" type="submit">Zoeken</button>
+    <button class="secondary" id="favoritesViewButton" type="button">Favorieten</button>
+
+    <details class="parent-settings" id="parentSettings">
+      <summary>Instellingen</summary>
+      <div class="parent-grid">
+        <label class="check-label">
+          <input id="kidModeToggle" type="checkbox" checked>
+          Kindvriendelijke modus
+        </label>
+        <label class="check-label">
+          <input id="safeFilterToggle" type="checkbox" checked>
+          Extra veilig filter
+        </label>
+        <label class="check-label">
+          <input id="advancedToggle" type="checkbox">
+          Bron en aantallen tonen
+        </label>
+        <label>
+          Standaard aantal
+          <select id="parentDefaultCount">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="200">200</option>
+          </select>
+        </label>
+      </div>
+    </details>
+  </form>
+
+  <div id="searchHistoryBar" class="search-history-bar" hidden></div>
+
+  <main>
+    <section class="results-panel">
+      <div id="messages" class="hint">Kies een zoekterm en klik op Zoeken. Klik daarna op een afbeelding om die te openen.</div>
+      <div id="grid" class="grid" hidden></div>
+    </section>
+
+    <aside class="viewer-panel">
+      <div class="viewer-actions">
+        <button class="green" id="printButton" type="button" disabled>Printen</button>
+        <button id="pdfButton" type="button" disabled>PDF</button>
+        <button id="editButton" type="button" disabled>Bewerken</button>
+        <button class="icon-button" id="viewerFavoriteButton" type="button" disabled title="Favoriet">&#9825;</button>
+        <button class="secondary" id="clearButton" type="button" disabled>Wissen</button>
+        <div class="print-options">
+          <label>
+            A4
+            <select id="printOrientation">
+              <option value="portrait" selected>Staand</option>
+              <option value="landscape">Liggend</option>
+            </select>
+          </label>
+          <label>
+            Marge
+            <select id="printMargin">
+              <option value="normal" selected>Normaal</option>
+              <option value="small">Klein</option>
+              <option value="none">Geen</option>
+            </select>
+          </label>
+        </div>
+        <a id="sourceLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Bron openen</a>
+      </div>
+
+      <div class="viewer">
+        <div class="print-view" id="printView">
+          <div class="a4-page" id="a4Page">
+            <div class="empty" id="viewerEmpty">Nog geen kleurplaat gekozen.</div>
+            <div class="crop-stage" id="cropStage" hidden>
+              <div class="crop-frame" id="cropFrame">
+                <canvas id="viewerCanvas"></canvas>
+                <img id="viewerImage" alt="" hidden>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="crop-controls" id="cropControls">
+          <button class="top" id="cropTopButton" type="button" disabled>Boven</button>
+          <button class="left" id="cropLeftButton" type="button" disabled>Links</button>
+          <button class="reset" id="cropResetButton" type="button" disabled>Reset</button>
+          <button class="right" id="cropRightButton" type="button" disabled>Rechts</button>
+          <button class="bottom" id="cropBottomButton" type="button" disabled>Onder</button>
+        </div>
+        <div class="viewer-info" id="viewerInfo">De gekozen afbeelding wordt hier groot weergegeven. Alleen dit vlak wordt geprint.</div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="editor-modal" id="editorModal" hidden>
+    <div class="editor-header">
+      <h2>Afbeelding bewerken</h2>
+      <button class="secondary" id="editorCloseButton" type="button">Sluiten</button>
+    </div>
+    <div class="editor-body">
+      <div class="editor-toolbar">
+        <div class="editor-tool-group">
+          <button id="eraserButton" type="button" title="Gum">&#9003;</button>
+          <button id="pencilButton" type="button" title="Potlood">&#9998;</button>
+          <button id="rectEraseButton" type="button" title="Rechthoekgum">&#9645;</button>
+          <label class="editor-slider">
+            <span id="toolSizeLabel">Gumgrootte</span>
+            <input id="eraserSize" type="range" min="8" max="80" value="28">
+          </label>
+          <div class="eraser-preview-row">
+            <div class="eraser-preview-box">
+              <div class="eraser-preview-size" id="eraserPreviewSize"></div>
+            </div>
+            <div id="eraserPreviewLabel">28 px</div>
+          </div>
+        </div>
+        <div class="editor-tool-group">
+          <button id="editorRotateLeft" type="button" title="Draai linksom">&#10226;</button>
+          <button id="editorRotateRight" type="button" title="Draai rechtsom">&#10227;</button>
+          <button id="editorFlipHorizontal" type="button" title="Spiegel horizontaal">&#8651;</button>
+          <button id="editorFlipVertical" type="button" title="Spiegel verticaal">&#8645;</button>
+        </div>
+        <div class="editor-tool-group">
+          <button id="editorZoomOut" type="button" title="Zoom uit">&#8722;</button>
+          <button id="editorFitButton" type="button" title="Passend">&#9974;</button>
+          <button id="editorZoomIn" type="button" title="Zoom in">+</button>
+        </div>
+        <div class="editor-tool-group">
+          <button id="editorContrastButton" type="button" title="Contrast">&#9680;</button>
+          <button id="editorBwButton" type="button" title="Zwart-wit">&#9641;</button>
+        </div>
+        <div class="editor-tool-group">
+          <button id="editorUndoButton" type="button" title="Ongedaan">&#8630;</button>
+          <button id="editorRedoButton" type="button" title="Opnieuw">&#8631;</button>
+          <button class="secondary" id="editorResetButton" type="button" title="Reset">&#10226;</button>
+        </div>
+        <div class="editor-tool-group">
+          <button id="editorSaveButton" type="button" title="Opslaan als PNG">&#11015;</button>
+          <button class="green" id="editorApplyButton" type="button" title="Toepassen">&#10003;</button>
+        </div>
+        <div class="pencil-color-row" id="pencilColorRow" hidden>
+          <div id="colorSwatches"></div>
+          <input type="color" id="customColorInput" value="#000000" title="Eigen kleur">
+        </div>
+      </div>
+      <div class="editor-canvas-wrap">
+        <div class="editor-crop-shell">
+          <button class="crop-top" id="editorCropTop" type="button" title="Snij boven">&#9660;</button>
+          <button class="crop-left" id="editorCropLeft" type="button" title="Snij links">&#9654;</button>
+          <div class="editor-canvas-slot">
+            <canvas id="editorCanvas"></canvas>
+            <div class="eraser-cursor" id="eraserCursor"></div>
+          </div>
+          <button class="crop-right" id="editorCropRight" type="button" title="Snij rechts">&#9664;</button>
+          <button class="crop-bottom" id="editorCropBottom" type="button" title="Snij onder">&#9650;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== PROXY & CONFIG =====
+    const PROXY_BASE = 'https://corsproxy.io/?';
+    const proxyUrl = url => PROXY_BASE + encodeURIComponent(url);
+    const FETCH_TIMEOUT = 25000;
+    const BLOCKED_WORDS = ["adult","sexy","nude","naakt","bikini","lingerie","horror","blood","bloody","weapon","gun","violence","death","casino","beer","wine","drugs","alcohol","roken","porno","porn","wapen","wapens","bloot"];
+    const FAVORITES_KEY = 'kleurplaten-favorieten-v1';
+    const SETTINGS_KEY = 'kleurplaten-ouderinstellingen-v1';
+    const HISTORY_KEY = 'kleurplaten-zoekhistorie-v1';
+    const PENCIL_COLORS = ["#000000","#555555","#e53935","#fb8c00","#fdd835","#43a047","#1e88e5","#8e24aa","#795548","#e91e63"];
+
+    // ===== TRANSLATIONS =====
+    const TRANSLATIONS = {
+      dino:'dinosaur',dinosaurus:'dinosaur',dinosaurussen:'dinosaurs',paard:'horse',paarden:'horses',
+      vis:'fish',vissen:'fish',eenhoorn:'unicorn',eenhoorns:'unicorns',prinses:'princess',prinsessen:'princesses',
+      voetbal:'soccer',auto:'car','auto\'s':'cars',autos:'cars',vliegtuig:'airplane',trein:'train',
+      bloem:'flower',bloemen:'flowers',vlinder:'butterfly',vlinders:'butterflies',
+      kat:'cat',poes:'cat',hond:'dog',honden:'dogs',kerst:'christmas',pasen:'easter',
+      zeemeermin:'mermaid',giraf:'giraffe',giraffe:'giraffe',giraffen:'giraffes',
+      robot:'robot',minecraft:'minecraft',pokemon:'pokemon',
+      leeuw:'lion',leeuwen:'lions',tijger:'tiger',tijgers:'tigers',
+      konijn:'rabbit',konijnen:'rabbits',beer:'bear',beren:'bears',
+      ster:'star',sterren:'stars',huis:'house',boom:'tree',bomen:'trees',
+      hart:'heart',vogel:'bird',vogels:'birds',fee:'fairy',draak:'dragon',draken:'dragons',
+      ridder:'knight',kasteel:'castle',zeepaard:'seahorse',krokodil:'crocodile',
+      nijlpaard:'hippopotamus',olifant:'elephant',olifanten:'elephants',zebra:'zebra',
+      koe:'cow',koeien:'cows',schaap:'sheep',kip:'chicken',aap:'monkey',apen:'monkeys',
+      slang:'snake',schildpad:'turtle',haai:'shark',haaien:'sharks',dolfijn:'dolphin',
+      kikker:'frog',zwaan:'swan',papegaai:'parrot','pinguïn':'penguin',pinguin:'penguin',
+      ijsbeer:'polar bear',vos:'fox',wolf:'wolf',wolven:'wolves',haas:'hare',
+      muis:'mouse',eend:'duck',eenden:'ducks',uil:'owl',regenboog:'rainbow',
+      wolk:'cloud',zon:'sun',maan:'moon',ruimte:'space',raket:'rocket',
+      astronaut:'astronaut',planeet:'planet',kerstboom:'christmas tree',sneeuwman:'snowman',
+      ballon:'balloon',superheld:'superhero',superhelden:'superheroes',
+      piraat:'pirate',piraten:'pirates',heks:'witch',tovenaar:'wizard',
+      sprookje:'fairy tale',engel:'angel',tuin:'garden',strand:'beach',
+      basketbal:'basketball',tennis:'tennis',lente:'spring',zomer:'summer',herfst:'autumn',winter:'winter',
+    };
+
+    function translateQuery(q) {
+      return q.split(' ').map(w => TRANSLATIONS[w] || w).join(' ');
+    }
+
+    function buildSearchQueries(query) {
+      const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
+      const trans = translateQuery(norm);
+      const seen = new Set();
+      const out = [];
+      const add = q => { if (!seen.has(q)) { seen.add(q); out.push(q); } };
+      const hasTag = s => s.includes('kleurplaat') || s.includes('coloring');
+      if (!hasTag(norm)) {
+        add(`${norm} kleurplaat`);
+        add(`${norm} kleurplaten`);
+        if (trans !== norm) {
+          add(`${trans} coloring page`);
+          add(`${trans} coloring pages`);
+        }
+      } else {
+        add(norm);
+        if (trans !== norm) add(trans);
+      }
+      return out;
+    }
+
+    function rankResults(query, results) {
+      const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
+      const trans = translateQuery(norm);
+      const wanted = new Set([...norm.split(' '), ...trans.split(' ')].filter(w => w.length > 2));
+      const helpful = new Set(['coloring','page','kleurplaat','kleurplaten','line','art','outline','drawing','printable']);
+      return [...results].sort((a, b) => score(b) - score(a));
+      function score(item) {
+        const text = `${item.title || ''} ${item.source || ''}`.toLowerCase();
+        let v = 0;
+        for (const w of wanted) if (text.includes(w)) v += 5;
+        for (const w of helpful) if (text.includes(w)) v += 2;
+        if (item.width && item.height) v += 1;
+        return v;
+      }
+    }
+
+    function dedupeResults(results) {
+      const seen = new Set();
+      return results.filter(r => {
+        const key = normalizeUrl(r.image || r.thumbnail);
+        if (!key || seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+    }
+
+    function interleaveByProvider(results) {
+      const groups = new Map();
+      const order = [];
+      for (const r of results) {
+        const p = r.provider || 'Onbekend';
+        if (!groups.has(p)) { groups.set(p, []); order.push(p); }
+        groups.get(p).push(r);
+      }
+      const out = [];
+      let i = 0;
+      while (true) {
+        let added = false;
+        for (const p of order) {
+          const g = groups.get(p);
+          if (i < g.length) { out.push(g[i]); added = true; }
+        }
+        if (!added) break;
+        i++;
+      }
+      return out;
+    }
+
+    function normalizeResult({ provider, id, title, imageUrl, thumbUrl, sourceUrl, license, width, height }) {
+      return {
+        id,
+        title: cleanTitle(title || 'Afbeelding'),
+        provider,
+        thumbnail: thumbUrl || imageUrl,
+        image: imageUrl,
+        source: sourceUrl || imageUrl,
+        license: license || '',
+        width: Number(width) || 0,
+        height: Number(height) || 0,
+      };
+    }
+
+    function cleanTitle(v) {
+      v = String(v || 'Afbeelding');
+      const div = document.createElement('div');
+      div.innerHTML = v;
+      v = div.textContent || div.innerText || v;
+      return v.replace(/\.[a-z0-9]{2,5}$/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim() || 'Afbeelding';
+    }
+
+    function normalizeUrl(url) {
+      try { const u = new URL(url); u.hash=''; return u.href; } catch { return url||''; }
+    }
+
+    function isChildSafe(result) {
+      const text = `${result.title||''} ${result.source||''} ${result.provider||''}`.toLowerCase();
+      return !BLOCKED_WORDS.some(w => text.includes(w));
+    }
+
+    // ===== FETCH HELPERS =====
+    async function timedFetch(url, opts = {}) {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
+      try {
+        return await fetch(url, { ...opts, signal: ctrl.signal });
+      } finally {
+        clearTimeout(tid);
+      }
+    }
+
+    async function fetchJson(url, opts = {}) {
+      const r = await timedFetch(url, opts);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }
+
+    // ===== SEARCH: DUCKDUCKGO =====
+    async function searchDdgs(query, count) {
+      const queries = buildSearchQueries(query);
+      const allResults = [];
+
+      for (const q of queries.slice(0, 2)) {
+        try {
+          const items = await fetchDdgsImages(q, count);
+          allResults.push(...items);
+          if (dedupeResults(allResults).length >= count) break;
+        } catch (e) {
+          // try next query
+        }
+      }
+
+      const results = rankResults(query, dedupeResults(allResults));
+      if (!results.length) throw new Error('DuckDuckGo gaf geen resultaten. Probeer het opnieuw of kies een andere bron.');
+      return results.slice(0, count);
+    }
+
+    async function fetchDdgsImages(searchTerm, count) {
+      // Step 1: get vqd token
+      const initUrl = `https://duckduckgo.com/?q=${encodeURIComponent(searchTerm)}&iax=images&ia=images`;
+      const initResp = await timedFetch(proxyUrl(initUrl));
+      if (!initResp.ok) throw new Error(`DuckDuckGo init ${initResp.status}`);
+      const initHtml = await initResp.text();
+      const vqdMatch = initHtml.match(/vqd=['"]?([^'"&\s]+)/);
+      if (!vqdMatch) throw new Error('DuckDuckGo token niet gevonden');
+      const vqd = vqdMatch[1];
+
+      // Step 2: get images
+      const params = new URLSearchParams({ l:'nl-nl', o:'json', q:searchTerm, vqd, f:',,,', p:'1' });
+      const imgUrl = `https://duckduckgo.com/i.js?${params}`;
+      const data = await fetchJson(proxyUrl(imgUrl));
+
+      return (data.results || [])
+        .filter(item => item.image)
+        .slice(0, count)
+        .map((item, idx) => normalizeResult({
+          provider: 'Internet afbeeldingen',
+          id: `ddg:${idx}:${item.image}`,
+          title: item.title || searchTerm,
+          imageUrl: item.image,
+          thumbUrl: item.thumbnail || item.image,
+          sourceUrl: item.url || item.image,
+          license: 'Zoekresultaat',
+          width: item.width,
+          height: item.height,
+        }));
+    }
+
+    // ===== SEARCH: WIKIMEDIA COMMONS =====
+    async function searchCommons(query, count) {
+      const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
+      const trans = translateQuery(norm);
+      const terms = [trans !== norm ? `${trans} coloring page` : null, `${norm} kleurplaat`, `${trans} line art`].filter(Boolean);
+      const allResults = [];
+
+      for (const term of terms) {
+        try {
+          const params = new URLSearchParams({
+            action:'query', format:'json', generator:'search',
+            gsrnamespace:'6', gsrsearch:term, gsrlimit:String(Math.min(count,50)),
+            prop:'imageinfo', iiprop:'url|mime|size|extmetadata', iiurlwidth:'600', origin:'*',
+          });
+          const data = await fetchJson(`https://commons.wikimedia.org/w/api.php?${params}`);
+          const pages = (data.query || {}).pages || {};
+          for (const page of Object.values(pages)) {
+            const info = (page.imageinfo || [])[0];
+            if (!info) continue;
+            const mime = info.mime || '';
+            if (mime && !mime.startsWith('image/')) continue;
+            const imageUrl = info.url;
+            if (!imageUrl) continue;
+            const meta = info.extmetadata || {};
+            const shortUrl = (meta.Descriptionshorturl || {}).value;
+            const title = page.title || '';
+            const sourceUrl = shortUrl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(title.replace(/ /g,'_'))}`;
+            allResults.push(normalizeResult({
+              provider: 'Wikimedia Commons',
+              id: `commons:${page.pageid}`,
+              title: title.replace(/^File:/,''),
+              imageUrl,
+              thumbUrl: info.thumburl || imageUrl,
+              sourceUrl,
+              license: (meta.LicenseShortName || {}).value || 'Commons',
+              width: info.width,
+              height: info.height,
+            }));
+          }
+          if (dedupeResults(allResults).length >= count) break;
+        } catch (e) { /* try next */ }
+      }
+
+      const results = rankResults(query, dedupeResults(allResults));
+      if (!results.length) throw new Error('Wikimedia Commons gaf geen resultaten.');
+      return results.slice(0, count);
+    }
+
+    // ===== SEARCH: OPENVERSE =====
+    async function searchOpenverse(query, count) {
+      const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
+      const trans = translateQuery(norm);
+      const searchTerm = trans !== norm ? `${trans} coloring` : `${norm} coloring`;
+      const params = new URLSearchParams({ q:searchTerm, page_size:String(Math.min(count,50)), mature:'false' });
+      const data = await fetchJson(`https://api.openverse.org/v1/images/?${params}`);
+      const results = (data.results || [])
+        .filter(item => item.url || item.thumbnail)
+        .map((item, idx) => normalizeResult({
+          provider: 'Openverse',
+          id: `openverse:${item.id || idx}`,
+          title: item.title || searchTerm,
+          imageUrl: item.url || item.thumbnail,
+          thumbUrl: item.thumbnail || item.url,
+          sourceUrl: item.foreign_landing_url || item.url,
+          license: [item.license, item.license_version].filter(Boolean).join(' '),
+          width: item.width,
+          height: item.height,
+        }));
+      if (!results.length) throw new Error('Openverse gaf geen resultaten.');
+      return rankResults(query, dedupeResults(results)).slice(0, count);
+    }
+
+    // ===== MAIN SEARCH =====
+    const form = document.getElementById('searchForm');
+    const queryInput = document.getElementById('query');
+    const providerInput = document.getElementById('provider');
+    const countInput = document.getElementById('count');
+    const searchButton = document.getElementById('searchButton');
+    const favoritesViewButton = document.getElementById('favoritesViewButton');
+    const messages = document.getElementById('messages');
+    const grid = document.getElementById('grid');
+    const status = document.getElementById('status');
+    const a4Page = document.getElementById('a4Page');
+    const cropStage = document.getElementById('cropStage');
+    const cropFrame = document.getElementById('cropFrame');
+    const viewerCanvas = document.getElementById('viewerCanvas');
+    const viewerCanvasCtx = viewerCanvas.getContext('2d');
+    const viewerImage = document.getElementById('viewerImage');
+    const viewerEmpty = document.getElementById('viewerEmpty');
+    const viewerInfo = document.getElementById('viewerInfo');
+    const printButton = document.getElementById('printButton');
+    const pdfButton = document.getElementById('pdfButton');
+    const editButton = document.getElementById('editButton');
+    const viewerFavoriteButton = document.getElementById('viewerFavoriteButton');
+    const clearButton = document.getElementById('clearButton');
+    const sourceLink = document.getElementById('sourceLink');
+    const printOrientation = document.getElementById('printOrientation');
+    const printMargin = document.getElementById('printMargin');
+    const kidModeToggle = document.getElementById('kidModeToggle');
+    const safeFilterToggle = document.getElementById('safeFilterToggle');
+    const advancedToggle = document.getElementById('advancedToggle');
+    const parentDefaultCount = document.getElementById('parentDefaultCount');
+    const cropButtons = {
+      top: document.getElementById('cropTopButton'),
+      right: document.getElementById('cropRightButton'),
+      bottom: document.getElementById('cropBottomButton'),
+      left: document.getElementById('cropLeftButton'),
+      reset: document.getElementById('cropResetButton'),
+    };
+    const editorModal = document.getElementById('editorModal');
+    const editorCanvas = document.getElementById('editorCanvas');
+    const editorCtx = editorCanvas.getContext('2d');
+    const editorCloseButton = document.getElementById('editorCloseButton');
+    const editorApplyButton = document.getElementById('editorApplyButton');
+    const editorResetButton = document.getElementById('editorResetButton');
+    const editorUndoButton = document.getElementById('editorUndoButton');
+    const editorRedoButton = document.getElementById('editorRedoButton');
+    const eraserButton = document.getElementById('eraserButton');
+    const pencilButton = document.getElementById('pencilButton');
+    const rectEraseButton = document.getElementById('rectEraseButton');
+    const eraserSize = document.getElementById('eraserSize');
+    const eraserPreviewSize = document.getElementById('eraserPreviewSize');
+    const eraserPreviewLabel = document.getElementById('eraserPreviewLabel');
+    const eraserCursor = document.getElementById('eraserCursor');
+    const editorCropTop = document.getElementById('editorCropTop');
+    const editorCropRight = document.getElementById('editorCropRight');
+    const editorCropBottom = document.getElementById('editorCropBottom');
+    const editorCropLeft = document.getElementById('editorCropLeft');
+    const editorRotateLeft = document.getElementById('editorRotateLeft');
+    const editorRotateRight = document.getElementById('editorRotateRight');
+    const editorFlipHorizontal = document.getElementById('editorFlipHorizontal');
+    const editorFlipVertical = document.getElementById('editorFlipVertical');
+    const editorZoomOut = document.getElementById('editorZoomOut');
+    const editorFitButton = document.getElementById('editorFitButton');
+    const editorZoomIn = document.getElementById('editorZoomIn');
+    const editorContrastButton = document.getElementById('editorContrastButton');
+    const editorBwButton = document.getElementById('editorBwButton');
+    const editorSaveButton = document.getElementById('editorSaveButton');
+
+    let selectedTile = null;
+    let selectedResult = null;
+    let currentResults = [];
+    let activeSearchId = 0;
+    let currentImageUrl = '';
+    let viewerBitmap = null;
+    let crop = { top:0, right:0, bottom:0, left:0 };
+    const CROP_STEP = 1;
+    const CROP_MAX = 40;
+    let editorSourceCanvas = document.createElement('canvas');
+    let editorSourceCtx = editorSourceCanvas.getContext('2d');
+    let editorCrop = { top:0, right:0, bottom:0, left:0 };
+    let editorHistory = [];
+    let editorRedoHistory = [];
+    let editorZoom = 1;
+    let editorTool = 'eraser';
+    let rectEraseStart = null;
+    let lastDrawPoint = null;
+    let erasing = false;
+    let pencilColor = '#000000';
+    let favorites = loadFavorites();
+    let showingFavorites = false;
+
+    async function search() {
+      const searchId = ++activeSearchId;
+      const query = queryInput.value.trim();
+      const provider = kidModeToggle.checked ? 'ddgs' : providerInput.value;
+      const count = kidModeToggle.checked && !advancedToggle.checked
+        ? Number(parentDefaultCount.value) : Number(countInput.value);
+
+      if (!query) { showMessage('Vul eerst een zoekterm in.','error'); return; }
+
+      showingFavorites = false;
+      updateFavoritesButton();
+      searchButton.disabled = true;
+      clearGrid();
+      clearSelection();
+      showMessage('Zoeken...','hint');
+      setStatus('Online zoeken naar kleurplaten...');
+
+      try {
+        let results = [];
+        const errors = [];
+
+        const run = async (fn, name) => {
+          try { results.push(...await fn(query, count)); }
+          catch (e) { errors.push(`${name}: ${e.message}`); }
+        };
+
+        if (provider === 'all') {
+          await run(searchDdgs, 'DuckDuckGo');
+          await run(searchCommons, 'Commons');
+          await run(searchOpenverse, 'Openverse');
+          results = interleaveByProvider(rankResults(query, dedupeResults(results)));
+        } else if (provider === 'ddgs') {
+          await run(searchDdgs, 'DuckDuckGo');
+        } else if (provider === 'commons') {
+          await run(searchCommons, 'Commons');
+        } else if (provider === 'openverse') {
+          await run(searchOpenverse, 'Openverse');
+        }
+
+        if (searchId !== activeSearchId) return;
+
+        if (safeFilterToggle.checked) results = results.filter(isChildSafe);
+        results = dedupeResults(results);
+
+        if (errors.length && !results.length) {
+          showMessage(errors.join(' | '), 'error');
+          setStatus('Zoeken mislukt.');
+          return;
+        }
+        if (errors.length) setStatus(`Resultaten geladen (${errors.join('; ')})`);
+
+        currentResults = results;
+        if (currentResults.length) addToSearchHistory(query);
+        renderResults(currentResults);
+      } catch (e) {
+        if (searchId !== activeSearchId) return;
+        showMessage(e.message || String(e), 'error');
+        setStatus('Zoeken mislukt.');
+      } finally {
+        if (searchId === activeSearchId) searchButton.disabled = false;
+      }
+    }
+
+    // ===== IMAGE LOADING =====
+    function loadImg(src, cors = false) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        if (cors) img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Afbeelding kon niet worden geladen.'));
+        img.src = src;
+      });
+    }
+
+    // ===== RESULTS RENDERING =====
+    function renderResults(results) {
+      clearGrid();
+      if (!results.length) {
+        showMessage(showingFavorites
+          ? 'Nog geen favorieten. Klik op het hartje bij een kleurplaat.'
+          : "Geen afbeeldingen gevonden. Probeer een andere zoekterm, bijv. 'paard' of 'minecraft'.", 'empty');
+        setStatus(showingFavorites ? 'Geen favorieten.' : 'Geen resultaten.');
+        return;
+      }
+      messages.hidden = true;
+      grid.hidden = false;
+      const frag = document.createDocumentFragment();
+      results.forEach(result => {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.setAttribute('role','button');
+        tile.tabIndex = 0;
+        tile.dataset.id = result.id;
+        tile.addEventListener('click', () => selectResult(result, tile));
+        tile.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectResult(result, tile); }
+        });
+
+        const favBtn = document.createElement('button');
+        favBtn.type = 'button';
+        favBtn.className = 'tile-favorite' + (isFavorite(result) ? ' active' : '');
+        favBtn.title = 'Favoriet';
+        favBtn.textContent = isFavorite(result) ? '♥' : '♡';
+        favBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          toggleFavorite(result);
+          favBtn.textContent = isFavorite(result) ? '♥' : '♡';
+          favBtn.classList.toggle('active', isFavorite(result));
+          updateFavoriteUi();
+          if (showingFavorites) { currentResults = Object.values(favorites); renderResults(currentResults); }
+        });
+        tile.appendChild(favBtn);
+
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb';
+        const img = document.createElement('img');
+        img.src = result.thumbnail;
+        img.alt = result.title;
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        img.onerror = () => { thumb.textContent = 'Geen preview'; };
+        thumb.appendChild(img);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const titleEl = document.createElement('div');
+        titleEl.className = 'title';
+        titleEl.textContent = result.title;
+        const sourceEl = document.createElement('div');
+        sourceEl.className = 'source';
+        sourceEl.textContent = result.license ? `${result.provider} - ${result.license}` : result.provider;
+        meta.append(titleEl, sourceEl);
+        tile.append(thumb, meta);
+        frag.appendChild(tile);
+      });
+      grid.appendChild(frag);
+      setStatus(`${results.length} resultaten gevonden.`);
+    }
+
+    function selectFirstResult() {
+      if (!currentResults.length) return;
+      const firstTile = grid.querySelector('.tile');
+      if (firstTile) selectResult(currentResults[0], firstTile);
+    }
+
+    function selectResult(result, tile) {
+      if (selectedTile) selectedTile.classList.remove('selected');
+      selectedTile = tile;
+      selectedTile.classList.add('selected');
+      selectedResult = result;
+      resetCrop();
+      viewerEmpty.hidden = true;
+      cropStage.hidden = false;
+      viewerImage.removeAttribute('src');
+      viewerBitmap = null;
+      clearViewerCanvas();
+      resetViewerImageFit();
+
+      // Load viewer image via proxy for CORS (enables editor + PDF)
+      currentImageUrl = result.image;
+      viewerImage.crossOrigin = 'anonymous';
+      viewerImage.src = proxyUrl(result.image);
+      viewerImage.alt = result.title;
+      viewerImage.referrerPolicy = 'no-referrer';
+
+      viewerInfo.textContent = [
+        result.title, result.provider,
+        result.license ? `Licentie: ${result.license}` : '',
+        result.width && result.height ? `${result.width} x ${result.height}px` : '',
+      ].filter(Boolean).join(' | ');
+
+      sourceLink.href = result.source || result.image;
+      sourceLink.hidden = false;
+      printButton.disabled = false;
+      pdfButton.disabled = false;
+      editButton.disabled = false;
+      viewerFavoriteButton.disabled = false;
+      clearButton.disabled = false;
+      setCropButtonsEnabled(true);
+      updateFavoriteUi();
+      setStatus('Kleurplaat geopend in de viewer.');
+    }
+
+    function clearSelection() {
+      if (selectedTile) selectedTile.classList.remove('selected');
+      selectedTile = null;
+      selectedResult = null;
+      viewerImage.removeAttribute('src');
+      viewerBitmap = null;
+      clearViewerCanvas();
+      cropStage.hidden = true;
+      viewerEmpty.hidden = false;
+      viewerInfo.textContent = 'De gekozen afbeelding wordt hier groot weergegeven. Alleen dit vlak wordt geprint.';
+      sourceLink.hidden = true;
+      printButton.disabled = true;
+      pdfButton.disabled = true;
+      editButton.disabled = true;
+      viewerFavoriteButton.disabled = true;
+      viewerFavoriteButton.textContent = '♡';
+      viewerFavoriteButton.classList.remove('favorite-active');
+      clearButton.disabled = true;
+      currentImageUrl = '';
+      resetCrop();
+      setCropButtonsEnabled(false);
+    }
+
+    // ===== VIEWER CANVAS =====
+    viewerImage.addEventListener('load', () => {
+      resetViewerImageFit();
+      viewerBitmap = viewerImage;
+      renderViewerCanvas();
+    });
+    window.addEventListener('resize', () => renderViewerCanvas());
+
+    function renderViewerCanvas() {
+      if (!viewerBitmap || cropStage.hidden) return;
+      const rect = cropFrame.getBoundingClientRect();
+      const cssW = Math.max(1, Math.floor(rect.width));
+      const cssH = Math.max(1, Math.floor(rect.height));
+      const ratio = window.devicePixelRatio || 1;
+      viewerCanvas.width = Math.max(1, Math.floor(cssW * ratio));
+      viewerCanvas.height = Math.max(1, Math.floor(cssH * ratio));
+      viewerCanvas.style.width = `${cssW}px`;
+      viewerCanvas.style.height = `${cssH}px`;
+      viewerCanvasCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      viewerCanvasCtx.fillStyle = '#fff';
+      viewerCanvasCtx.fillRect(0, 0, cssW, cssH);
+      const sw = viewerBitmap.naturalWidth || viewerBitmap.width;
+      const sh = viewerBitmap.naturalHeight || viewerBitmap.height;
+      const scale = Math.min(cssW / sw, cssH / sh);
+      const dw = sw * scale, dh = sh * scale;
+      const x = (cssW - dw) / 2, y = (cssH - dh) / 2;
+      viewerCanvasCtx.drawImage(viewerBitmap, x, y, dw, dh);
+    }
+
+    function clearViewerCanvas() {
+      const rect = cropFrame.getBoundingClientRect();
+      viewerCanvas.width = Math.max(1, Math.floor(rect.width || 1));
+      viewerCanvas.height = Math.max(1, Math.floor(rect.height || 1));
+      viewerCanvasCtx.fillStyle = '#fff';
+      viewerCanvasCtx.fillRect(0, 0, viewerCanvas.width, viewerCanvas.height);
+    }
+
+    function resetViewerImageFit() {
+      viewerImage.style.cssText = 'width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;transform:none';
+    }
+
+    // ===== CROP =====
+    function cropSide(side) {
+      crop[side] = Math.min(CROP_MAX, crop[side] + CROP_STEP);
+      applyCrop();
+    }
+
+    function resetCrop() {
+      crop = { top:0, right:0, bottom:0, left:0 };
+      applyCrop();
+    }
+
+    function applyCrop() {
+      cropFrame.style.clipPath = 'none';
+      cropFrame.style.webkitClipPath = 'none';
+      resetViewerImageFit();
+    }
+
+    function setCropButtonsEnabled(enabled) {
+      Object.values(cropButtons).forEach(b => { b.disabled = !enabled; });
+    }
+
+    // ===== PRINT =====
+    function preparePrintImage() {
+      if (!viewerBitmap) return null;
+      try {
+        const sw = viewerBitmap.naturalWidth || viewerBitmap.width;
+        const sh = viewerBitmap.naturalHeight || viewerBitmap.height;
+        if (!sw || !sh) return null;
+        const maxSide = 3200;
+        const scale = Math.min(1, maxSide / Math.max(sw, sh));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(sw * scale));
+        canvas.height = Math.max(1, Math.round(sh * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(viewerBitmap, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/png');
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function openPrintWindow(imageUrl) {
+      const landscape = printOrientation.value === 'landscape';
+      const marginMap = { normal:'10mm', small:'5mm', none:'0' };
+      const pageSize = landscape ? 'A4 landscape' : 'A4 portrait';
+      const pageMargin = marginMap[printMargin.value] || '10mm';
+      const win = window.open('', '_blank', 'width=900,height=900');
+      if (!win) { window.print(); return; }
+      win.document.open();
+      win.document.write(`<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Kleurplaat printen</title>
+<style>@page{size:${pageSize};margin:0}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#fff}
+body{display:grid;place-items:center;overflow:hidden;padding:${pageMargin}}
+img{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}</style></head>
+<body><img id="pi" src="${imageUrl}" alt="Kleurplaat">
+<script>const i=document.getElementById('pi');window.addEventListener('afterprint',()=>setTimeout(()=>window.close(),250));
+i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},150));<\/script></body></html>`);
+      win.document.close();
+    }
+
+    // ===== PDF =====
+    async function openPrintPdf() {
+      const dataUrl = preparePrintImage();
+      if (dataUrl) {
+        try {
+          const pdfBytes = buildPdf(dataUrl, printOrientation.value, printMargin.value);
+          downloadPdfBytes(pdfBytes);
+          setStatus('PDF klaar om te openen of opslaan.');
+        } catch (e) {
+          setStatus('PDF mislukt, printvenster geopend.');
+          openPrintWindow(dataUrl);
+        }
+      } else {
+        // Canvas tainted — reload via proxy (shouldn't normally happen since viewer uses proxy)
+        if (!currentImageUrl) return;
+        setStatus('PDF laden...');
+        try {
+          const src = currentImageUrl.startsWith('data:') ? currentImageUrl : proxyUrl(currentImageUrl);
+          const img = await loadImg(src, !currentImageUrl.startsWith('data:'));
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          const pdfBytes = buildPdf(canvas.toDataURL('image/png'), printOrientation.value, printMargin.value);
+          downloadPdfBytes(pdfBytes);
+          setStatus('PDF klaar.');
+        } catch (e) {
+          setStatus(`PDF niet beschikbaar: ${e.message}. Gebruik Printen en sla op als PDF.`);
+          if (currentImageUrl) openPrintWindow(currentImageUrl);
+        }
+      }
+    }
+
+    function downloadPdfBytes(bytes) {
+      const blob = new Blob([bytes], { type:'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'kleurplaat.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+    }
+
+    function buildPdf(pngDataUrl, orientation, margin) {
+      // Convert PNG data URL to a canvas, then JPEG bytes for DCTDecode embedding
+      const tmp = document.createElement('canvas');
+      const imgEl = new Image();
+      imgEl.src = pngDataUrl;
+      const sw = imgEl.naturalWidth || imgEl.width || 800;
+      const sh = imgEl.naturalHeight || imgEl.height || 600;
+      const maxSide = 3200;
+      const sc = Math.min(1, maxSide / Math.max(sw, sh));
+      tmp.width = Math.max(1, Math.round(sw * sc));
+      tmp.height = Math.max(1, Math.round(sh * sc));
+      const tctx = tmp.getContext('2d');
+      tctx.fillStyle = '#fff';
+      tctx.fillRect(0, 0, tmp.width, tmp.height);
+      tctx.drawImage(imgEl, 0, 0, tmp.width, tmp.height);
+
+      const jpegB64 = tmp.toDataURL('image/jpeg', 0.92).split(',')[1];
+      const jpegBytes = Uint8Array.from(atob(jpegB64), c => c.charCodeAt(0));
+
+      const pw = orientation === 'landscape' ? 841.89 : 595.28;
+      const ph = orientation === 'landscape' ? 595.28 : 841.89;
+      const mp = {none:0, small:14.17, normal:28.35}[margin] ?? 28.35;
+      const iw = tmp.width, ih = tmp.height;
+      const imgSc = Math.min((pw - mp*2) / iw, (ph - mp*2) / ih);
+      const dw = iw * imgSc, dh = ih * imgSc;
+      const dx = (pw - dw) / 2, dy = (ph - dh) / 2;
+
+      const te = s => new TextEncoder().encode(s);
+      const merge = (...arrs) => {
+        const out = new Uint8Array(arrs.reduce((s,a) => s + a.length, 0));
+        let p = 0;
+        for (const a of arrs) { out.set(a, p); p += a.length; }
+        return out;
+      };
+
+      const content = te(`q\n${dw.toFixed(3)} 0 0 ${dh.toFixed(3)} ${dx.toFixed(3)} ${dy.toFixed(3)} cm\n/Im0 Do\nQ\n`);
+      const objs = [
+        te('<< /Type /Catalog /Pages 2 0 R >>'),
+        te('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'),
+        te(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw.toFixed(3)} ${ph.toFixed(3)}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`),
+        merge(te(`<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`), jpegBytes, te('\nendstream')),
+        merge(te(`<< /Length ${content.length} >>\nstream\n`), content, te('\nendstream')),
+      ];
+
+      const parts = [te('%PDF-1.4\n')];
+      const offsets = [];
+      let pos = parts[0].length;
+
+      for (let i = 0; i < objs.length; i++) {
+        const obj = merge(te(`${i+1} 0 obj\n`), objs[i], te('\nendobj\n'));
+        offsets.push(pos);
+        parts.push(obj);
+        pos += obj.length;
+      }
+
+      const xrefPos = pos;
+      let xref = `xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
+      offsets.forEach(o => { xref += `${String(o).padStart(10,'0')} 00000 n \n`; });
+      xref += `trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
+      parts.push(te(xref));
+
+      return merge(...parts);
+    }
+
+    // ===== EDITOR =====
+    async function openEditor() {
+      if (!currentImageUrl) return;
+      try {
+        setStatus('Bewerker laden...');
+        const src = currentImageUrl.startsWith('data:') ? currentImageUrl : proxyUrl(currentImageUrl);
+        const image = await loadImg(src, !currentImageUrl.startsWith('data:'));
+        const width = image.naturalWidth || image.width;
+        const height = image.naturalHeight || image.height;
+        editorSourceCanvas.width = width;
+        editorSourceCanvas.height = height;
+        editorSourceCtx.fillStyle = '#fff';
+        editorSourceCtx.fillRect(0, 0, width, height);
+        editorSourceCtx.drawImage(image, 0, 0, width, height);
+        editorCrop = { top:0, right:0, bottom:0, left:0 };
+        editorHistory = [];
+        editorRedoHistory = [];
+        editorZoom = 1;
+        editorTool = 'eraser';
+        document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
+        document.getElementById('pencilColorRow').hidden = true;
+        pushEditorHistory();
+        editorModal.hidden = false;
+        requestAnimationFrame(() => { renderEditor(); updateEraserPreview(); });
+        setStatus('Bewerker geopend.');
+      } catch (e) {
+        setStatus(`Bewerken niet beschikbaar: ${e.message}`);
+      }
+    }
+
+    function closeEditor() { editorModal.hidden = true; }
+
+    function renderEditor() {
+      const cr = getEditorCropRect();
+      const slot = editorCanvas.parentElement;
+      const maxW = Math.max(240, slot.clientWidth - 24);
+      const maxH = Math.max(240, slot.clientHeight - 24);
+      const baseScale = Math.min(maxW / cr.width, maxH / cr.height, 1);
+      const scale = baseScale * editorZoom;
+      editorCanvas.width = Math.max(1, Math.round(cr.width * scale));
+      editorCanvas.height = Math.max(1, Math.round(cr.height * scale));
+      editorCtx.fillStyle = '#fff';
+      editorCtx.fillRect(0, 0, editorCanvas.width, editorCanvas.height);
+      editorCtx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, 0, 0, editorCanvas.width, editorCanvas.height);
+    }
+
+    function updateEraserPreview() {
+      const size = Number(eraserSize.value);
+      eraserPreviewSize.style.width = `${size}px`;
+      eraserPreviewSize.style.height = `${size}px`;
+      eraserPreviewLabel.textContent = `${size} px`;
+      eraserCursor.style.width = `${size}px`;
+      eraserCursor.style.height = `${size}px`;
+    }
+
+    function updateEraserCursor(event) {
+      const size = Number(eraserSize.value);
+      const canvasRect = editorCanvas.getBoundingClientRect();
+      const slotRect = editorCanvas.parentElement.getBoundingClientRect();
+      const x = canvasRect.left - slotRect.left + event.clientX - canvasRect.left - size / 2;
+      const y = canvasRect.top - slotRect.top + event.clientY - canvasRect.top - size / 2;
+      eraserCursor.style.width = `${size}px`;
+      eraserCursor.style.height = `${size}px`;
+      eraserCursor.style.transform = `translate(${x}px,${y}px)`;
+    }
+
+    function hideEraserCursor() { eraserCursor.style.transform = 'translate(-9999px,-9999px)'; }
+
+    function getEditorCropRect() {
+      const w = editorSourceCanvas.width, h = editorSourceCanvas.height;
+      const l = Math.round(w * editorCrop.left / 100);
+      const t = Math.round(h * editorCrop.top / 100);
+      const r = Math.round(w * editorCrop.right / 100);
+      const b = Math.round(h * editorCrop.bottom / 100);
+      return { x:l, y:t, width:Math.max(1, w-l-r), height:Math.max(1, h-t-b) };
+    }
+
+    function cropEditor(side) {
+      pushEditorHistory();
+      editorCrop[side] = Math.min(CROP_MAX, editorCrop[side] + CROP_STEP);
+      renderEditor();
+    }
+
+    function resetEditor() { if (!currentImageUrl) return; openEditor(); }
+
+    function pushEditorHistory() {
+      try {
+        editorHistory.push(captureEditorState());
+        editorRedoHistory = [];
+        if (editorHistory.length > 20) editorHistory.shift();
+      } catch { editorHistory = []; editorRedoHistory = []; }
+    }
+
+    function undoEditor() {
+      if (!editorHistory.length) return;
+      editorRedoHistory.push(captureEditorState());
+      restoreEditorState(editorHistory.pop());
+      renderEditor();
+    }
+
+    function redoEditor() {
+      if (!editorRedoHistory.length) return;
+      editorHistory.push(captureEditorState());
+      restoreEditorState(editorRedoHistory.pop());
+      renderEditor();
+    }
+
+    function captureEditorState() {
+      return { image: editorSourceCtx.getImageData(0, 0, editorSourceCanvas.width, editorSourceCanvas.height), crop: { ...editorCrop } };
+    }
+
+    function restoreEditorState(state) {
+      editorSourceCanvas.width = state.image.width;
+      editorSourceCanvas.height = state.image.height;
+      editorSourceCtx.putImageData(state.image, 0, 0);
+      editorCrop = { ...state.crop };
+    }
+
+    function setEditorZoom(v) { editorZoom = Math.max(0.25, Math.min(5, v)); renderEditor(); }
+
+    function rotateEditor(degrees) {
+      pushEditorHistory();
+      const src = cloneCanvas(editorSourceCanvas);
+      editorSourceCanvas.width = src.height;
+      editorSourceCanvas.height = src.width;
+      editorSourceCtx.fillStyle = '#fff';
+      editorSourceCtx.fillRect(0, 0, editorSourceCanvas.width, editorSourceCanvas.height);
+      editorSourceCtx.save();
+      if (degrees > 0) { editorSourceCtx.translate(editorSourceCanvas.width, 0); editorSourceCtx.rotate(Math.PI/2); }
+      else { editorSourceCtx.translate(0, editorSourceCanvas.height); editorSourceCtx.rotate(-Math.PI/2); }
+      editorSourceCtx.drawImage(src, 0, 0);
+      editorSourceCtx.restore();
+      editorCrop = { top:0, right:0, bottom:0, left:0 };
+      renderEditor();
+    }
+
+    function flipEditor(dir) {
+      pushEditorHistory();
+      const src = cloneCanvas(editorSourceCanvas);
+      editorSourceCtx.fillStyle = '#fff';
+      editorSourceCtx.fillRect(0, 0, editorSourceCanvas.width, editorSourceCanvas.height);
+      editorSourceCtx.save();
+      if (dir === 'horizontal') { editorSourceCtx.translate(editorSourceCanvas.width, 0); editorSourceCtx.scale(-1, 1); }
+      else { editorSourceCtx.translate(0, editorSourceCanvas.height); editorSourceCtx.scale(1, -1); }
+      editorSourceCtx.drawImage(src, 0, 0);
+      editorSourceCtx.restore();
+      renderEditor();
+    }
+
+    function cloneCanvas(c) {
+      const copy = document.createElement('canvas');
+      copy.width = c.width; copy.height = c.height;
+      copy.getContext('2d').drawImage(c, 0, 0);
+      return copy;
+    }
+
+    function applyImageFilter(kind) {
+      pushEditorHistory();
+      const id = editorSourceCtx.getImageData(0, 0, editorSourceCanvas.width, editorSourceCanvas.height);
+      const d = id.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+        if (kind === 'bw') {
+          const v = gray > 185 ? 255 : 0;
+          d[i] = d[i+1] = d[i+2] = v;
+        } else {
+          const f = 1.55;
+          d[i] = clampColor((d[i]-128)*f+128);
+          d[i+1] = clampColor((d[i+1]-128)*f+128);
+          d[i+2] = clampColor((d[i+2]-128)*f+128);
+        }
+      }
+      editorSourceCtx.putImageData(id, 0, 0);
+      renderEditor();
+    }
+
+    function clampColor(v) { return Math.max(0, Math.min(255, v)); }
+
+    function saveEditorPng() {
+      const cr = getEditorCropRect();
+      const out = document.createElement('canvas');
+      out.width = cr.width; out.height = cr.height;
+      const octx = out.getContext('2d');
+      octx.fillStyle = '#fff';
+      octx.fillRect(0, 0, out.width, out.height);
+      octx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, 0, 0, out.width, out.height);
+      const a = document.createElement('a');
+      a.href = out.toDataURL('image/png');
+      a.download = 'kleurplaat-bewerkt.png';
+      a.click();
+    }
+
+    function startErase(event) {
+      if (editorModal.hidden) return;
+      event.preventDefault();
+      pushEditorHistory();
+      erasing = true;
+      lastDrawPoint = editorPointToImagePoint(event);
+      rectEraseStart = editorTool === 'rect' ? lastDrawPoint : null;
+      editorCanvas.setPointerCapture(event.pointerId);
+      if (editorTool === 'eraser') eraseAt(event);
+      if (editorTool === 'pencil') drawAt(event);
+    }
+
+    function moveErase(event) {
+      if (!erasing) return;
+      event.preventDefault();
+      if (editorTool === 'eraser') eraseAt(event);
+      if (editorTool === 'pencil') drawAt(event);
+    }
+
+    function stopErase(event) {
+      if (!erasing) return;
+      event.preventDefault();
+      if (editorTool === 'rect' && rectEraseStart) eraseRectTo(event);
+      erasing = false; lastDrawPoint = null; rectEraseStart = null;
+      try { editorCanvas.releasePointerCapture(event.pointerId); } catch {}
+    }
+
+    function eraseAt(event) {
+      const point = editorPointToImagePoint(event);
+      const rect = editorCanvas.getBoundingClientRect();
+      const cr = getEditorCropRect();
+      const sz = Number(eraserSize.value) * (cr.width / rect.width);
+      const from = lastDrawPoint || point;
+      editorSourceCtx.save();
+      editorSourceCtx.strokeStyle = '#fff';
+      editorSourceCtx.lineWidth = sz;
+      editorSourceCtx.lineCap = 'round';
+      editorSourceCtx.lineJoin = 'round';
+      editorSourceCtx.beginPath();
+      editorSourceCtx.moveTo(from.x, from.y);
+      editorSourceCtx.lineTo(point.x, point.y);
+      editorSourceCtx.stroke();
+      editorSourceCtx.restore();
+      lastDrawPoint = point;
+      renderEditor();
+    }
+
+    function drawAt(event) {
+      const point = editorPointToImagePoint(event);
+      const rect = editorCanvas.getBoundingClientRect();
+      const cr = getEditorCropRect();
+      const sz = Math.max(1, Number(eraserSize.value) * (cr.width / rect.width));
+      editorSourceCtx.save();
+      editorSourceCtx.strokeStyle = pencilColor;
+      editorSourceCtx.lineWidth = sz;
+      editorSourceCtx.lineCap = 'round';
+      editorSourceCtx.lineJoin = 'round';
+      editorSourceCtx.beginPath();
+      editorSourceCtx.moveTo(lastDrawPoint.x, lastDrawPoint.y);
+      editorSourceCtx.lineTo(point.x, point.y);
+      editorSourceCtx.stroke();
+      editorSourceCtx.restore();
+      lastDrawPoint = point;
+      renderEditor();
+    }
+
+    function eraseRectTo(event) {
+      const pt = editorPointToImagePoint(event);
+      const x = Math.min(rectEraseStart.x, pt.x), y = Math.min(rectEraseStart.y, pt.y);
+      const w = Math.abs(rectEraseStart.x - pt.x), h = Math.abs(rectEraseStart.y - pt.y);
+      editorSourceCtx.save();
+      editorSourceCtx.fillStyle = '#fff';
+      editorSourceCtx.fillRect(x, y, w, h);
+      editorSourceCtx.restore();
+      renderEditor();
+    }
+
+    function editorPointToImagePoint(event) {
+      const rect = editorCanvas.getBoundingClientRect();
+      const cr = getEditorCropRect();
+      return {
+        x: cr.x + ((event.clientX - rect.left) / rect.width) * cr.width,
+        y: cr.y + ((event.clientY - rect.top) / rect.height) * cr.height,
+      };
+    }
+
+    async function applyEditorChanges() {
+      const cr = getEditorCropRect();
+      const out = document.createElement('canvas');
+      out.width = cr.width; out.height = cr.height;
+      const octx = out.getContext('2d');
+      octx.fillStyle = '#fff';
+      octx.fillRect(0, 0, out.width, out.height);
+      octx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, 0, 0, out.width, out.height);
+      const editedUrl = out.toDataURL('image/png');
+      currentImageUrl = editedUrl;
+      resetViewerImageFit();
+      const editedImage = await loadImg(editedUrl, false);
+      viewerBitmap = editedImage;
+      renderViewerCanvas();
+      viewerImage.crossOrigin = '';
+      viewerImage.src = editedUrl;
+      resetCrop();
+      closeEditor();
+      setStatus('Bewerkingen toegepast op de viewer.');
+    }
+
+    // ===== FAVORITES =====
+    function loadFavorites() {
+      try { const r = localStorage.getItem(FAVORITES_KEY); return r ? JSON.parse(r) : {}; } catch { return {}; }
+    }
+    function saveFavorites() { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)); }
+    function favoriteKey(result) { return normalizeUrl(result.image || result.thumbnail || result.source || result.id); }
+    function isFavorite(result) { const k = favoriteKey(result); return Boolean(k && favorites[k]); }
+    function toggleFavorite(result) {
+      const k = favoriteKey(result);
+      if (!k) return;
+      if (favorites[k]) delete favorites[k]; else favorites[k] = { ...result };
+      saveFavorites();
+      updateFavoritesButton();
+    }
+    function updateFavoritesButton() {
+      const count = Object.keys(favorites).length;
+      favoritesViewButton.textContent = showingFavorites ? 'Terug naar zoeken' : `Favorieten (${count})`;
+      favoritesViewButton.classList.toggle('favorite-active', showingFavorites);
+    }
+    function updateFavoriteUi() {
+      if (!selectedResult) return;
+      const active = isFavorite(selectedResult);
+      viewerFavoriteButton.textContent = active ? '♥' : '♡';
+      viewerFavoriteButton.classList.toggle('favorite-active', active);
+    }
+
+    // ===== SEARCH HISTORY =====
+    function loadSearchHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+    }
+    function addToSearchHistory(query) {
+      let h = loadSearchHistory().filter(q => q !== query);
+      h.unshift(query);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 10)));
+      renderSearchHistory();
+    }
+    function renderSearchHistory() {
+      const bar = document.getElementById('searchHistoryBar');
+      if (!bar) return;
+      const history = loadSearchHistory();
+      bar.innerHTML = '';
+      bar.hidden = !history.length;
+      history.forEach(q => {
+        const chip = document.createElement('button');
+        chip.type = 'button'; chip.className = 'history-chip'; chip.textContent = q;
+        chip.addEventListener('click', () => { queryInput.value = q; search(); });
+        bar.appendChild(chip);
+      });
+    }
+
+    // ===== SETTINGS =====
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        kidModeToggle.checked = s.kidMode !== false;
+        safeFilterToggle.checked = s.safeFilter !== false;
+        advancedToggle.checked = Boolean(s.showAdvanced);
+        if (s.defaultCount) { parentDefaultCount.value = String(s.defaultCount); countInput.value = String(s.defaultCount); }
+        if (s.printOrientation) printOrientation.value = s.printOrientation;
+        if (s.printMargin) printMargin.value = s.printMargin;
+      } catch {}
+    }
+    function saveSettingsAndApply() {
+      if (parentDefaultCount.value) countInput.value = parentDefaultCount.value;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        kidMode: kidModeToggle.checked,
+        safeFilter: safeFilterToggle.checked,
+        showAdvanced: advancedToggle.checked,
+        defaultCount: parentDefaultCount.value,
+        printOrientation: printOrientation.value,
+        printMargin: printMargin.value,
+      }));
+      applySettings();
+      updatePrintPreview();
+    }
+    function applySettings() {
+      const hide = kidModeToggle.checked && !advancedToggle.checked;
+      [providerInput.closest('label'), countInput.closest('label')].forEach(el => {
+        if (el) el.classList.toggle('hidden', hide);
+      });
+      if (hide) { providerInput.value = 'ddgs'; countInput.value = parentDefaultCount.value; }
+      updateFavoritesButton();
+    }
+    function updatePrintPreview() {
+      const landscape = printOrientation.value === 'landscape';
+      const marginMap = { normal:'4%', small:'2%', none:'0' };
+      const printMarginMap = { normal:'10mm', small:'5mm', none:'0' };
+      a4Page.classList.toggle('landscape', landscape);
+      a4Page.style.setProperty('--paper-margin-preview', marginMap[printMargin.value] || '4%');
+      let ps = document.getElementById('printPageStyle');
+      if (!ps) { ps = document.createElement('style'); ps.id = 'printPageStyle'; document.head.appendChild(ps); }
+      ps.textContent = `@media print { @page { size: ${landscape?'A4 landscape':'A4 portrait'}; margin: ${printMarginMap[printMargin.value]||'10mm'}; } }`;
+      renderViewerCanvas();
+    }
+
+    // ===== COLOR SWATCHES =====
+    function initColorSwatches() {
+      const container = document.getElementById('colorSwatches');
+      const customInput = document.getElementById('customColorInput');
+      if (!container || !customInput) return;
+      PENCIL_COLORS.forEach(color => {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'color-swatch' + (color === pencilColor ? ' active' : '');
+        sw.style.background = color; sw.title = color;
+        sw.addEventListener('click', () => {
+          pencilColor = color; customInput.value = color;
+          container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+          sw.classList.add('active');
+        });
+        container.appendChild(sw);
+      });
+      customInput.addEventListener('input', () => {
+        pencilColor = customInput.value;
+        container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      });
+    }
+
+    // ===== HELPER =====
+    function clearGrid() { grid.replaceChildren(); grid.hidden = true; messages.hidden = false; }
+    function showMessage(text, type) { messages.className = type || 'hint'; messages.textContent = text; messages.hidden = false; grid.hidden = true; }
+    function setStatus(text) { status.textContent = text; }
+
+    // ===== EVENT LISTENERS =====
+    form.addEventListener('submit', e => { e.preventDefault(); search(); });
+    printButton.addEventListener('click', () => {
+      if (cropStage.hidden) return;
+      const imgUrl = preparePrintImage() || currentImageUrl;
+      if (imgUrl) openPrintWindow(imgUrl);
+    });
+    pdfButton.addEventListener('click', () => { if (!cropStage.hidden) openPrintPdf(); });
+    clearButton.addEventListener('click', () => clearSelection());
+    editButton.addEventListener('click', () => openEditor());
+    favoritesViewButton.addEventListener('click', () => {
+      showingFavorites = !showingFavorites;
+      updateFavoritesButton();
+      if (showingFavorites) {
+        currentResults = Object.values(favorites);
+        clearSelection();
+        renderResults(currentResults);
+        selectFirstResult();
+        setStatus(currentResults.length ? `${currentResults.length} favorieten.` : 'Geen favorieten.');
+      } else {
+        clearGrid();
+        showMessage('Kies een zoekterm en klik op Zoeken.','hint');
+        setStatus('Favorieten gesloten.');
+      }
+    });
+    viewerFavoriteButton.addEventListener('click', () => {
+      if (!selectedResult) return;
+      toggleFavorite(selectedResult);
+      updateFavoriteUi();
+      if (showingFavorites) { currentResults = Object.values(favorites); renderResults(currentResults); selectFirstResult(); }
+    });
+    printOrientation.addEventListener('change', saveSettingsAndApply);
+    printMargin.addEventListener('change', saveSettingsAndApply);
+    kidModeToggle.addEventListener('change', saveSettingsAndApply);
+    safeFilterToggle.addEventListener('change', saveSettingsAndApply);
+    advancedToggle.addEventListener('change', saveSettingsAndApply);
+    parentDefaultCount.addEventListener('change', saveSettingsAndApply);
+    providerInput.addEventListener('change', () => { showingFavorites = false; updateFavoritesButton(); });
+    cropButtons.top.addEventListener('click', () => cropSide('top'));
+    cropButtons.right.addEventListener('click', () => cropSide('right'));
+    cropButtons.bottom.addEventListener('click', () => cropSide('bottom'));
+    cropButtons.left.addEventListener('click', () => cropSide('left'));
+    cropButtons.reset.addEventListener('click', () => resetCrop());
+    editorCloseButton.addEventListener('click', () => closeEditor());
+    editorApplyButton.addEventListener('click', () => applyEditorChanges());
+    editorResetButton.addEventListener('click', () => resetEditor());
+    editorUndoButton.addEventListener('click', () => undoEditor());
+    editorRedoButton.addEventListener('click', () => redoEditor());
+    editorCropTop.addEventListener('click', () => cropEditor('top'));
+    editorCropRight.addEventListener('click', () => cropEditor('right'));
+    editorCropBottom.addEventListener('click', () => cropEditor('bottom'));
+    editorCropLeft.addEventListener('click', () => cropEditor('left'));
+    editorRotateLeft.addEventListener('click', () => rotateEditor(-90));
+    editorRotateRight.addEventListener('click', () => rotateEditor(90));
+    editorFlipHorizontal.addEventListener('click', () => flipEditor('horizontal'));
+    editorFlipVertical.addEventListener('click', () => flipEditor('vertical'));
+    editorZoomOut.addEventListener('click', () => setEditorZoom(editorZoom / 1.25));
+    editorFitButton.addEventListener('click', () => setEditorZoom(1));
+    editorZoomIn.addEventListener('click', () => setEditorZoom(editorZoom * 1.25));
+    editorContrastButton.addEventListener('click', () => applyImageFilter('contrast'));
+    editorBwButton.addEventListener('click', () => applyImageFilter('bw'));
+    editorSaveButton.addEventListener('click', () => saveEditorPng());
+    eraserButton.addEventListener('click', () => {
+      editorTool = 'eraser';
+      document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
+      document.getElementById('pencilColorRow').hidden = true;
+      setStatus('Gum actief.');
+    });
+    pencilButton.addEventListener('click', () => {
+      editorTool = 'pencil';
+      eraserSize.value = '8';
+      updateEraserPreview();
+      document.getElementById('toolSizeLabel').textContent = 'Potloodgrootte';
+      document.getElementById('pencilColorRow').hidden = false;
+      setStatus('Potlood actief.');
+    });
+    rectEraseButton.addEventListener('click', () => {
+      editorTool = 'rect';
+      document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
+      document.getElementById('pencilColorRow').hidden = true;
+      setStatus('Rechthoekgum actief.');
+    });
+    eraserSize.addEventListener('input', updateEraserPreview);
+    editorCanvas.addEventListener('pointerdown', startErase);
+    editorCanvas.addEventListener('pointermove', moveErase);
+    editorCanvas.addEventListener('pointerup', stopErase);
+    editorCanvas.addEventListener('pointerleave', stopErase);
+    editorCanvas.addEventListener('pointerenter', updateEraserCursor);
+    editorCanvas.addEventListener('pointermove', updateEraserCursor);
+    editorCanvas.addEventListener('pointerleave', hideEraserCursor);
+
+    // ===== INIT =====
+    loadSettings();
+    applySettings();
+    updatePrintPreview();
+    initColorSwatches();
+    renderSearchHistory();
+  </script>
+</body>
+</html>
