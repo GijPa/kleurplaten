@@ -1666,10 +1666,20 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     // ===== EDITOR =====
     async function openEditor() {
       if (!currentImageUrl) return;
+      let objUrl = null;
       try {
         setStatus('Bewerker laden...');
-        const src = currentImageUrl.startsWith('data:') ? currentImageUrl : imageProxyUrl(currentImageUrl);
-        const image = await loadImg(src, !currentImageUrl.startsWith('data:'));
+        let image;
+        if (currentImageUrl.startsWith('data:')) {
+          image = await loadImg(currentImageUrl);
+        } else {
+          // Haal image op via fetch (met timeout) en maak een object URL
+          // Betrouwbaarder dan crossOrigin op <img>: geen CORS-header problemen
+          const resp = await timedFetch(imageProxyUrl(currentImageUrl));
+          if (!resp.ok) throw new Error(`Afbeelding laden mislukt (HTTP ${resp.status})`);
+          objUrl = URL.createObjectURL(await resp.blob());
+          image = await loadImg(objUrl);
+        }
         const width = image.naturalWidth || image.width;
         const height = image.naturalHeight || image.height;
         editorSourceCanvas.width = width;
@@ -1690,6 +1700,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         setStatus('Bewerker geopend.');
       } catch (e) {
         setStatus(`Bewerken niet beschikbaar: ${e.message}`);
+      } finally {
+        if (objUrl) URL.revokeObjectURL(objUrl);
       }
     }
 
