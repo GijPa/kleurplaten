@@ -813,7 +813,7 @@
         <div class="editor-tool-group">
           <button id="eraserButton" type="button" title="Gum">&#9003;</button>
           <button id="pencilButton" type="button" title="Potlood">&#9998;</button>
-          <button id="rectEraseButton" type="button" title="Rechthoekgum">&#9645;</button>
+          <button id="fillButton" type="button" title="Vlak vullen">&#129699;</button>
           <button id="panButton" type="button" title="Bewegen">&#9995;</button>
           <label class="editor-slider">
             <span id="toolSizeLabel">Gumgrootte</span>
@@ -1202,7 +1202,7 @@
     const editorRedoButton = document.getElementById('editorRedoButton');
     const eraserButton = document.getElementById('eraserButton');
     const pencilButton = document.getElementById('pencilButton');
-    const rectEraseButton = document.getElementById('rectEraseButton');
+    const fillButton = document.getElementById('fillButton');
     const panButton = document.getElementById('panButton');
     const eraserSize = document.getElementById('eraserSize');
     const eraserPreviewSize = document.getElementById('eraserPreviewSize');
@@ -1912,6 +1912,45 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       a.click();
     }
 
+    function floodFill(sx, sy) {
+      const w = editorSourceCanvas.width;
+      const h = editorSourceCanvas.height;
+      const imageData = editorSourceCtx.getImageData(0, 0, w, h);
+      const d = imageData.data;
+      const i0 = (sy * w + sx) * 4;
+      const tr = d[i0], tg = d[i0+1], tb = d[i0+2], ta = d[i0+3];
+      const fr = parseInt(pencilColor.slice(1,3), 16);
+      const fg = parseInt(pencilColor.slice(3,5), 16);
+      const fb = parseInt(pencilColor.slice(5,7), 16);
+      const TOL = 40;
+      if (Math.abs(tr-fr) <= TOL && Math.abs(tg-fg) <= TOL && Math.abs(tb-fb) <= TOL && ta === 255) return;
+      function matches(idx) {
+        return Math.abs(d[idx]-tr) <= TOL && Math.abs(d[idx+1]-tg) <= TOL &&
+               Math.abs(d[idx+2]-tb) <= TOL && Math.abs(d[idx+3]-ta) <= TOL;
+      }
+      const visited = new Uint8Array(w * h);
+      const queue = [sx, sy];
+      let qi = 0;
+      while (qi < queue.length) {
+        const x = queue[qi++], y = queue[qi++];
+        if (visited[y*w+x]) continue;
+        const i = (y*w+x)*4;
+        if (!matches(i)) continue;
+        let l = x, r = x;
+        while (l > 0 && !visited[y*w+(l-1)] && matches((y*w+(l-1))*4)) l--;
+        while (r < w-1 && !visited[y*w+(r+1)] && matches((y*w+(r+1))*4)) r++;
+        for (let xi = l; xi <= r; xi++) {
+          if (visited[y*w+xi]) continue;
+          const ii = (y*w+xi)*4;
+          d[ii]=fr; d[ii+1]=fg; d[ii+2]=fb; d[ii+3]=255;
+          visited[y*w+xi] = 1;
+          if (y > 0   && !visited[(y-1)*w+xi] && matches(((y-1)*w+xi)*4)) queue.push(xi, y-1);
+          if (y < h-1 && !visited[(y+1)*w+xi] && matches(((y+1)*w+xi)*4)) queue.push(xi, y+1);
+        }
+      }
+      editorSourceCtx.putImageData(imageData, 0, 0);
+    }
+
     function pinchDistance() {
       const pts = [...editorPointers.values()];
       return Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
@@ -1954,10 +1993,20 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         return;
       }
 
+      if (editorTool === 'fill') {
+        const pt = editorPointToImagePoint(event);
+        const fx = Math.round(Math.max(0, Math.min(editorSourceCanvas.width - 1, pt.x)));
+        const fy = Math.round(Math.max(0, Math.min(editorSourceCanvas.height - 1, pt.y)));
+        pushEditorHistory();
+        floodFill(fx, fy);
+        renderEditor();
+        return;
+      }
+
       pushEditorHistory();
       erasing = true;
       lastDrawPoint = editorPointToImagePoint(event);
-      rectEraseStart = editorTool === 'rect' ? lastDrawPoint : null;
+      rectEraseStart = null;
       editorCanvas.setPointerCapture(event.pointerId);
       if (editorTool === 'eraser') eraseAt(event);
       if (editorTool === 'pencil') drawAt(event);
@@ -2386,7 +2435,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     function updateEditorToolButtons() {
       eraserButton.classList.toggle('editor-tool-active', editorTool === 'eraser');
       pencilButton.classList.toggle('editor-tool-active', editorTool === 'pencil');
-      rectEraseButton.classList.toggle('editor-tool-active', editorTool === 'rect');
+      fillButton.classList.toggle('editor-tool-active', editorTool === 'fill');
       panButton.classList.toggle('editor-tool-active', editorTool === 'pan');
       editorCanvas.style.cursor = editorTool === 'pan' ? 'grab' : 'crosshair';
     }
@@ -2407,12 +2456,12 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       updateEditorToolButtons();
       setStatus('Potlood actief.');
     });
-    rectEraseButton.addEventListener('click', () => {
-      editorTool = 'rect';
+    fillButton.addEventListener('click', () => {
+      editorTool = 'fill';
       document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
-      document.getElementById('pencilColorRow').hidden = true;
+      document.getElementById('pencilColorRow').hidden = false;
       updateEditorToolButtons();
-      setStatus('Rechthoekgum actief.');
+      setStatus('Vlak vullen actief.');
     });
     panButton.addEventListener('click', () => {
       editorTool = 'pan';
