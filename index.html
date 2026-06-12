@@ -404,6 +404,8 @@
       position: relative;
       z-index: 1;
       touch-action: none;
+      border: 2px solid #1a4a7a;
+      box-sizing: border-box;
     }
 
     .eraser-cursor {
@@ -857,14 +859,14 @@
       </div>
       <div class="editor-canvas-wrap">
         <div class="editor-crop-shell">
-          <button class="crop-top" id="editorCropTop" type="button" title="Snij boven">&#9660;</button>
-          <button class="crop-left" id="editorCropLeft" type="button" title="Snij links">&#9654;</button>
+          <button class="crop-top" id="editorCropTop" type="button" title="Snij boven">&#8595;</button>
+          <button class="crop-left" id="editorCropLeft" type="button" title="Snij links">&#8594;</button>
           <div class="editor-canvas-slot">
             <canvas id="editorCanvas"></canvas>
             <div class="eraser-cursor" id="eraserCursor"></div>
           </div>
-          <button class="crop-right" id="editorCropRight" type="button" title="Snij rechts">&#9664;</button>
-          <button class="crop-bottom" id="editorCropBottom" type="button" title="Snij onder">&#9650;</button>
+          <button class="crop-right" id="editorCropRight" type="button" title="Snij rechts">&#8592;</button>
+          <button class="crop-bottom" id="editorCropBottom" type="button" title="Snij onder">&#8593;</button>
         </div>
       </div>
     </div>
