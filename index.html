@@ -1594,15 +1594,20 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       }
     }
 
-    function downloadPdfBytes(bytes) {
+    async function downloadPdfBytes(bytes) {
       const blob = new Blob([bytes], { type:'application/pdf' });
+      // On mobile: use Web Share API so iOS shows "Printen" in share sheet (no website URL)
+      if (navigator.canShare) {
+        const file = new File([blob], 'kleurplaat.pdf', { type:'application/pdf' });
+        if (navigator.canShare({ files:[file] })) {
+          try { await navigator.share({ files:[file], title:'Kleurplaat' }); return; } catch(e) { /* cancelled or not supported, fall through */ }
+        }
+      }
+      // Desktop fallback: trigger download
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'kleurplaat.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = 'kleurplaat.pdf';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
     }
 
@@ -2132,8 +2137,15 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     }
 
     printButton.addEventListener('click', () => {
-      if (cropStage.hidden) return;
-      printImageInPage(currentImageUrl);
+      if (cropStage.hidden || !currentImageUrl) return;
+      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      if (isMobile) {
+        // Mobile/iOS: generate PDF and share via share sheet (shows "Printen" without website URL)
+        openPrintPdf();
+      } else {
+        // Desktop: overlay print (no URL footer in Chrome/Edge)
+        printImageInPage(currentImageUrl);
+      }
     });
     pdfButton.addEventListener('click', () => { if (!cropStage.hidden) openPrintPdf(); });
     clearButton.addEventListener('click', () => clearSelection());
