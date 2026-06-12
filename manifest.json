@@ -1,0 +1,17 @@
+{
+  "name": "Kleurplaten Zoeken",
+  "short_name": "Kleurplaten",
+  "description": "Zoek, bekijk en print kleurplaten",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a4a7a",
+  "theme_color": "#1a4a7a",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
