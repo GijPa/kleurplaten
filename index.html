@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kleurplaten Zoeken2</title>
+  <title>Kleurplaten Zoeken3</title>
   <link rel="icon" href="icon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <style>
     * { box-sizing: border-box; }
 
@@ -853,6 +854,8 @@
     // ===== PROXY & CONFIG =====
     const PROXY_BASE = 'https://corsproxy.io/?';
     const proxyUrl = url => PROXY_BASE + encodeURIComponent(url);
+    // wsrv.nl is a dedicated image proxy — used only for editor/PDF canvas operations (needs CORS)
+    const imageProxyUrl = url => `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
     const FETCH_TIMEOUT = 25000;
     const BLOCKED_WORDS = ["adult","sexy","nude","naakt","bikini","lingerie","horror","blood","bloody","weapon","gun","violence","death","casino","beer","wine","drugs","alcohol","roken","porno","porn","wapen","wapens","bloot"];
     const FAVORITES_KEY = 'kleurplaten-favorieten-v1';
@@ -1379,10 +1382,10 @@
       clearViewerCanvas();
       resetViewerImageFit();
 
-      // Load viewer image via proxy for CORS (enables editor + PDF)
+      // Load viewer image directly — proxy not needed for <img> display
       currentImageUrl = result.image;
-      viewerImage.crossOrigin = 'anonymous';
-      viewerImage.src = proxyUrl(result.image);
+      viewerImage.removeAttribute('crossOrigin');
+      viewerImage.src = result.image;
       viewerImage.alt = result.title;
       viewerImage.referrerPolicy = 'no-referrer';
 
@@ -1542,11 +1545,11 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
           openPrintWindow(dataUrl);
         }
       } else {
-        // Canvas tainted — reload via proxy (shouldn't normally happen since viewer uses proxy)
+        // Canvas tainted — reload via image proxy for CORS
         if (!currentImageUrl) return;
         setStatus('PDF laden...');
         try {
-          const src = currentImageUrl.startsWith('data:') ? currentImageUrl : proxyUrl(currentImageUrl);
+          const src = currentImageUrl.startsWith('data:') ? currentImageUrl : imageProxyUrl(currentImageUrl);
           const img = await loadImg(src, !currentImageUrl.startsWith('data:'));
           const canvas = document.createElement('canvas');
           canvas.width = img.naturalWidth || img.width;
@@ -1646,14 +1649,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       if (!currentImageUrl) return;
       try {
         setStatus('Bewerker laden...');
-        let image;
-        if (currentImageUrl.startsWith('data:')) {
-          image = await loadImg(currentImageUrl);
-        } else if (viewerBitmap && viewerImage.complete && viewerImage.naturalWidth > 0) {
-          image = viewerImage;
-        } else {
-          image = await loadImg(proxyUrl(currentImageUrl), true);
-        }
+        const src = currentImageUrl.startsWith('data:') ? currentImageUrl : imageProxyUrl(currentImageUrl);
+        const image = await loadImg(src, !currentImageUrl.startsWith('data:'));
         const width = image.naturalWidth || image.width;
         const height = image.naturalHeight || image.height;
         editorSourceCanvas.width = width;
