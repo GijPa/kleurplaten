@@ -1763,25 +1763,50 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     function closeEditor() { editorModal.hidden = true; }
 
     function renderEditor() {
-      const cr = getEditorCropRect();
+      const W = editorSourceCanvas.width;
+      const H = editorSourceCanvas.height;
       const slot = editorCanvas.parentElement;
       const canW = Math.max(1, Math.floor(Math.max(240, slot.clientWidth - 24)));
       const canH = Math.max(1, Math.floor(Math.max(240, slot.clientHeight - 24)));
       if (editorCanvas.width !== canW) editorCanvas.width = canW;
       if (editorCanvas.height !== canH) editorCanvas.height = canH;
-      const baseScale = Math.min(canW / cr.width, canH / cr.height, 1);
+      const baseScale = Math.min(canW / W, canH / H, 1);
       const scale = baseScale * editorZoom;
-      const imgCanW = cr.width * scale;
-      const imgCanH = cr.height * scale;
+      const imgCanW = W * scale;
+      const imgCanH = H * scale;
       editorPanX = Math.max(0, Math.min(Math.max(0, imgCanW - canW), editorPanX));
       editorPanY = Math.max(0, Math.min(Math.max(0, imgCanH - canH), editorPanY));
       editorCtx.fillStyle = '#fff';
       editorCtx.fillRect(0, 0, canW, canH);
-      editorCtx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, -editorPanX, -editorPanY, imgCanW, imgCanH);
+      editorCtx.drawImage(editorSourceCanvas, 0, 0, W, H, -editorPanX, -editorPanY, imgCanW, imgCanH);
+
+      const cr = getEditorCropRect();
+      const hasCrop = editorCrop.top > 0 || editorCrop.right > 0 || editorCrop.bottom > 0 || editorCrop.left > 0;
+      const cropL = cr.x * scale - editorPanX;
+      const cropT = cr.y * scale - editorPanY;
+      const cropR = (cr.x + cr.width) * scale - editorPanX;
+      const cropB = (cr.y + cr.height) * scale - editorPanY;
+      const imgL = -editorPanX;
+      const imgT = -editorPanY;
+      const imgR = imgCanW - editorPanX;
+      const imgB = imgCanH - editorPanY;
+
       editorCtx.save();
-      editorCtx.strokeStyle = '#1a4a7a';
-      editorCtx.lineWidth = 2;
-      editorCtx.strokeRect(-editorPanX + 1, -editorPanY + 1, imgCanW - 2, imgCanH - 2);
+      if (hasCrop) {
+        editorCtx.fillStyle = 'rgba(0,0,0,0.42)';
+        if (cropT > imgT) editorCtx.fillRect(imgL, imgT, imgR - imgL, cropT - imgT);
+        if (cropB < imgB) editorCtx.fillRect(imgL, cropB, imgR - imgL, imgB - cropB);
+        if (cropL > imgL) editorCtx.fillRect(imgL, cropT, cropL - imgL, cropB - cropT);
+        if (cropR < imgR) editorCtx.fillRect(cropR, cropT, imgR - cropR, cropB - cropT);
+        editorCtx.strokeStyle = '#fff';
+        editorCtx.lineWidth = 1.5;
+        editorCtx.setLineDash([6, 4]);
+        editorCtx.strokeRect(cropL, cropT, cropR - cropL, cropB - cropT);
+      } else {
+        editorCtx.strokeStyle = '#1a4a7a';
+        editorCtx.lineWidth = 1;
+        editorCtx.strokeRect(imgL + 0.5, imgT + 0.5, imgCanW - 1, imgCanH - 1);
+      }
       editorCtx.restore();
     }
 
@@ -1858,9 +1883,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     }
 
     function setEditorZoom(v, screenX, screenY) {
-      const cr = getEditorCropRect();
       const slot = editorCanvas.parentElement;
-      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / editorSourceCanvas.width, Math.max(240, slot.clientHeight - 24) / editorSourceCanvas.height, 1);
       const oldScale = baseScale * editorZoom;
       editorZoom = Math.max(0.25, Math.min(5, v));
       const newScale = baseScale * editorZoom;
@@ -2056,9 +2080,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
       if (isPinching) {
         if (editorPointers.size >= 2 && pinchInitialDist > 0) {
-          const cr = getEditorCropRect();
           const slot = editorCanvas.parentElement;
-          const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+          const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / editorSourceCanvas.width, Math.max(240, slot.clientHeight - 24) / editorSourceCanvas.height, 1);
           const newZoom = Math.max(0.25, Math.min(5, pinchInitialZoom * (pinchDistance() / pinchInitialDist)));
           const oldScale = baseScale * pinchInitialZoom;
           const newScale = baseScale * newZoom;
@@ -2126,9 +2149,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     function eraseAt(event) {
       const point = editorPointToImagePoint(event);
-      const cr = getEditorCropRect();
       const slot = editorCanvas.parentElement;
-      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / editorSourceCanvas.width, Math.max(240, slot.clientHeight - 24) / editorSourceCanvas.height, 1);
       const sz = Number(eraserSize.value) / (baseScale * editorZoom);
       const from = lastDrawPoint || point;
       editorSourceCtx.save();
@@ -2147,9 +2169,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     function drawAt(event) {
       const point = editorPointToImagePoint(event);
-      const cr = getEditorCropRect();
       const slot = editorCanvas.parentElement;
-      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / editorSourceCanvas.width, Math.max(240, slot.clientHeight - 24) / editorSourceCanvas.height, 1);
       const sz = Math.max(1, Number(eraserSize.value) / (baseScale * editorZoom));
       editorSourceCtx.save();
       editorSourceCtx.strokeStyle = pencilColor;
@@ -2178,14 +2199,13 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     function editorPointToImagePoint(event) {
       const rect = editorCanvas.getBoundingClientRect();
-      const cr = getEditorCropRect();
       const slot = editorCanvas.parentElement;
-      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / cr.width, Math.max(240, slot.clientHeight - 24) / cr.height, 1);
+      const baseScale = Math.min(Math.max(240, slot.clientWidth - 24) / editorSourceCanvas.width, Math.max(240, slot.clientHeight - 24) / editorSourceCanvas.height, 1);
       const scale = baseScale * editorZoom;
       const scaleCSS = editorCanvas.width / rect.width;
       const cx = (event.clientX - rect.left) * scaleCSS + editorPanX;
       const cy = (event.clientY - rect.top) * scaleCSS + editorPanY;
-      return { x: cr.x + cx / scale, y: cr.y + cy / scale };
+      return { x: cx / scale, y: cy / scale };
     }
 
     async function applyEditorChanges() {
