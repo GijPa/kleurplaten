@@ -404,8 +404,6 @@
       position: relative;
       z-index: 1;
       touch-action: none;
-      border: 2px solid #1a4a7a;
-      box-sizing: border-box;
     }
 
     .eraser-cursor {
@@ -539,8 +537,8 @@
 
     .editor-crop-shell {
       display: grid;
-      grid-template-columns: 28px minmax(0,1fr) 28px;
-      grid-template-rows: 28px minmax(0,1fr) 28px;
+      grid-template-columns: 40px minmax(0,1fr) 40px;
+      grid-template-rows: 40px minmax(0,1fr) 40px;
       width: 100%;
       height: 100%;
       max-width: 100%;
@@ -557,16 +555,48 @@
       height: 100%;
       padding: 0;
       border-radius: 4px;
-      background: #eef3f8;
+      background: #d0dce8;
       color: #1d2430;
-      border: 1px solid #c9d4df;
-      font-size: 17px;
+      border: 1px solid #a0b4c8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .editor-crop-shell button::before {
+      content: '';
+      display: block;
+      width: 0;
+      height: 0;
     }
 
     .editor-crop-shell .crop-top { grid-column: 2; grid-row: 1; }
-    .editor-crop-shell .crop-left { grid-column: 1; grid-row: 2; }
-    .editor-crop-shell .crop-right { grid-column: 3; grid-row: 2; }
+    .editor-crop-shell .crop-top::before {
+      border-left: 11px solid transparent;
+      border-right: 11px solid transparent;
+      border-top: 13px solid #1a4a7a;
+    }
+
     .editor-crop-shell .crop-bottom { grid-column: 2; grid-row: 3; }
+    .editor-crop-shell .crop-bottom::before {
+      border-left: 11px solid transparent;
+      border-right: 11px solid transparent;
+      border-bottom: 13px solid #1a4a7a;
+    }
+
+    .editor-crop-shell .crop-left { grid-column: 1; grid-row: 2; }
+    .editor-crop-shell .crop-left::before {
+      border-top: 11px solid transparent;
+      border-bottom: 11px solid transparent;
+      border-left: 13px solid #1a4a7a;
+    }
+
+    .editor-crop-shell .crop-right { grid-column: 3; grid-row: 2; }
+    .editor-crop-shell .crop-right::before {
+      border-top: 11px solid transparent;
+      border-bottom: 11px solid transparent;
+      border-right: 13px solid #1a4a7a;
+    }
 
     .editor-canvas-slot {
       grid-column: 2;
@@ -859,14 +889,14 @@
       </div>
       <div class="editor-canvas-wrap">
         <div class="editor-crop-shell">
-          <button class="crop-top" id="editorCropTop" type="button" title="Snij boven">&#8595;</button>
-          <button class="crop-left" id="editorCropLeft" type="button" title="Snij links">&#8594;</button>
+          <button class="crop-top" id="editorCropTop" type="button" title="Snij boven"></button>
+          <button class="crop-left" id="editorCropLeft" type="button" title="Snij links"></button>
           <div class="editor-canvas-slot">
             <canvas id="editorCanvas"></canvas>
             <div class="eraser-cursor" id="eraserCursor"></div>
           </div>
-          <button class="crop-right" id="editorCropRight" type="button" title="Snij rechts">&#8592;</button>
-          <button class="crop-bottom" id="editorCropBottom" type="button" title="Snij onder">&#8593;</button>
+          <button class="crop-right" id="editorCropRight" type="button" title="Snij rechts"></button>
+          <button class="crop-bottom" id="editorCropBottom" type="button" title="Snij onder"></button>
         </div>
       </div>
     </div>
@@ -1748,6 +1778,11 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       editorCtx.fillStyle = '#fff';
       editorCtx.fillRect(0, 0, canW, canH);
       editorCtx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, -editorPanX, -editorPanY, imgCanW, imgCanH);
+      editorCtx.save();
+      editorCtx.strokeStyle = '#1a4a7a';
+      editorCtx.lineWidth = 2;
+      editorCtx.strokeRect(-editorPanX + 1, -editorPanY + 1, imgCanW - 2, imgCanH - 2);
+      editorCtx.restore();
     }
 
     function updateEraserPreview() {
