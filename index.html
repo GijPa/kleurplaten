@@ -638,11 +638,12 @@
     }
     #colorPickerButton.open { outline: 3px solid #1a4a7a; }
     #sizePickerButton {
-      min-width: 38px !important;
+      min-width: 54px !important;
       font-size: 11px !important;
       font-weight: 700 !important;
-      padding: 0 5px !important;
+      padding: 0 8px !important;
       color: #1a4a7a;
+      line-height: 1;
     }
     #sizePickerButton.open { outline: 3px solid #1a4a7a; }
     #sizePickerPanel {
@@ -880,7 +881,7 @@
           <button id="fillButton" type="button" title="Vlak vullen">&#129699;</button>
           <button id="panButton" type="button" title="Bewegen">&#9995;</button>
           <button id="colorPickerButton" type="button" title="Kleur kiezen" hidden></button>
-          <button id="sizePickerButton" type="button" title="Pengrootte">28</button>
+          <button id="sizePickerButton" type="button" title="Pengrootte">&#9679; <span id="sizePickerLabel">28</span></button>
         </div>
         <div class="editor-tool-group">
           <button id="editorRotateLeft" type="button" title="Draai linksom">&#10226;</button>
@@ -1273,6 +1274,7 @@
     const colorPickerButton = document.getElementById('colorPickerButton');
     const pencilColorRow = document.getElementById('pencilColorRow');
     const sizePickerButton = document.getElementById('sizePickerButton');
+    const sizePickerLabel = document.getElementById('sizePickerLabel');
     const sizePickerPanel = document.getElementById('sizePickerPanel');
     const eraserSize = document.getElementById('eraserSize');
     const eraserPreviewSize = document.getElementById('eraserPreviewSize');
@@ -1854,7 +1856,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       eraserPreviewLabel.textContent = `${size} px`;
       eraserCursor.style.width = `${size}px`;
       eraserCursor.style.height = `${size}px`;
-      sizePickerButton.textContent = size;
+      sizePickerLabel.textContent = size;
     }
 
     function updateEraserCursor(event) {
