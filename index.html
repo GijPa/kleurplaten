@@ -373,21 +373,6 @@
       box-shadow: 0 0 0 2px #fff, 0 0 0 4px #e65100;
     }
 
-    .editor-slider {
-      width: 120px;
-      display: grid;
-      gap: 2px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .eraser-preview-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 38px;
-    }
-
     .eraser-preview-box {
       width: 38px;
       height: 38px;
@@ -652,6 +637,33 @@
       background: #000;
     }
     #colorPickerButton.open { outline: 3px solid #1a4a7a; }
+    #sizePickerButton {
+      min-width: 38px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      padding: 0 5px !important;
+      color: #1a4a7a;
+    }
+    #sizePickerButton.open { outline: 3px solid #1a4a7a; }
+    #sizePickerPanel {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid #c9d4df;
+      border-radius: 8px;
+      z-index: 30;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      min-width: 180px;
+    }
+    #sizePickerPanel[hidden] { display: none !important; }
+    .size-popup-label { font-size: 11px; font-weight: 700; color: #4a5a6a; }
+    .size-popup-preview { display: flex; align-items: center; gap: 10px; }
+    #sizePickerPanel input[type="range"] { width: 100%; }
     .color-swatch {
       width: 22px; height: 22px; min-width: 22px; min-height: 22px;
       border-radius: 50%; border: 2px solid rgba(0,0,0,0.15);
@@ -868,16 +880,7 @@
           <button id="fillButton" type="button" title="Vlak vullen">&#129699;</button>
           <button id="panButton" type="button" title="Bewegen">&#9995;</button>
           <button id="colorPickerButton" type="button" title="Kleur kiezen" hidden></button>
-          <label class="editor-slider">
-            <span id="toolSizeLabel">Gumgrootte</span>
-            <input id="eraserSize" type="range" min="8" max="80" value="28">
-          </label>
-          <div class="eraser-preview-row">
-            <div class="eraser-preview-box">
-              <div class="eraser-preview-size" id="eraserPreviewSize"></div>
-            </div>
-            <div id="eraserPreviewLabel">28 px</div>
-          </div>
+          <button id="sizePickerButton" type="button" title="Pengrootte">28</button>
         </div>
         <div class="editor-tool-group">
           <button id="editorRotateLeft" type="button" title="Draai linksom">&#10226;</button>
@@ -906,6 +909,16 @@
         <div class="pencil-color-row" id="pencilColorRow" hidden>
           <div id="colorSwatches"></div>
           <input type="color" id="customColorInput" value="#000000" title="Eigen kleur">
+        </div>
+        <div id="sizePickerPanel" hidden>
+          <div class="size-popup-label" id="toolSizeLabel">Gumgrootte</div>
+          <input id="eraserSize" type="range" min="8" max="80" value="28">
+          <div class="size-popup-preview">
+            <div class="eraser-preview-box">
+              <div class="eraser-preview-size" id="eraserPreviewSize"></div>
+            </div>
+            <div id="eraserPreviewLabel">28 px</div>
+          </div>
         </div>
       </div>
       <div class="editor-canvas-wrap">
@@ -1259,6 +1272,8 @@
     const panButton = document.getElementById('panButton');
     const colorPickerButton = document.getElementById('colorPickerButton');
     const pencilColorRow = document.getElementById('pencilColorRow');
+    const sizePickerButton = document.getElementById('sizePickerButton');
+    const sizePickerPanel = document.getElementById('sizePickerPanel');
     const eraserSize = document.getElementById('eraserSize');
     const eraserPreviewSize = document.getElementById('eraserPreviewSize');
     const eraserPreviewLabel = document.getElementById('eraserPreviewLabel');
@@ -1839,6 +1854,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       eraserPreviewLabel.textContent = `${size} px`;
       eraserCursor.style.width = `${size}px`;
       eraserCursor.style.height = `${size}px`;
+      sizePickerButton.textContent = size;
     }
 
     function updateEraserCursor(event) {
@@ -2528,6 +2544,9 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       const needsColor = editorTool === 'pencil' || editorTool === 'fill';
       colorPickerButton.hidden = !needsColor;
       if (!needsColor) { pencilColorRow.hidden = true; colorPickerButton.classList.remove('open'); }
+      const needsSize = editorTool === 'eraser' || editorTool === 'pencil';
+      sizePickerButton.hidden = !needsSize;
+      if (!needsSize) { sizePickerPanel.hidden = true; sizePickerButton.classList.remove('open'); }
       updateColorPickerButton();
     }
 
@@ -2562,13 +2581,17 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       pencilColorRow.hidden = !pencilColorRow.hidden;
       colorPickerButton.classList.toggle('open', !pencilColorRow.hidden);
     });
+    sizePickerButton.addEventListener('click', e => {
+      e.stopPropagation();
+      sizePickerPanel.hidden = !sizePickerPanel.hidden;
+      sizePickerButton.classList.toggle('open', !sizePickerPanel.hidden);
+    });
     document.addEventListener('click', () => {
-      if (!pencilColorRow.hidden) {
-        pencilColorRow.hidden = true;
-        colorPickerButton.classList.remove('open');
-      }
+      if (!pencilColorRow.hidden) { pencilColorRow.hidden = true; colorPickerButton.classList.remove('open'); }
+      if (!sizePickerPanel.hidden) { sizePickerPanel.hidden = true; sizePickerButton.classList.remove('open'); }
     });
     pencilColorRow.addEventListener('click', e => e.stopPropagation());
+    sizePickerPanel.addEventListener('click', e => e.stopPropagation());
     eraserSize.addEventListener('input', updateEraserPreview);
     editorCanvas.addEventListener('pointerdown', startErase);
     editorCanvas.addEventListener('pointermove', moveErase);
