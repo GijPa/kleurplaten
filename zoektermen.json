@@ -1,19 +1,46 @@
-[
-  "hond", "kat", "paard", "konijn", "beer", "leeuw", "tijger", "olifant",
-  "giraffe", "aap", "dolfijn", "haai", "vis", "vogel", "vlinder", "bij",
-  "kikker", "slang", "schildpad", "krokodil", "nijlpaard", "zebra",
-  "koe", "schaap", "kip", "eend", "uil", "zwaan", "papegaai", "pinguin",
-  "ijsbeer", "vos", "wolf", "muis", "haas", "giraf", "zeepaard",
-  "eenhoorn", "draak", "fee", "zeemeermin", "ridder", "prinses", "prins",
-  "superheld", "robot", "zombie",
-  "kasteel", "huis", "boerderij", "vuurtoren",
-  "auto", "trein", "vliegtuig", "boot", "raket", "fiets", "tractor", "bus",
-  "boom", "bloem", "vlinder", "regenboog", "zon", "maan", "ster", "hart",
-  "wolk", "sneeuwvlok", "paddenstoel",
-  "kerst", "kerstboom", "sneeuwman", "pasen", "halloween", "verjaardag", "gefeliciteerd", "jarig", 
-  "ruimte", "astronaut", "planeet",
-  "pizza", "taart", "ijs", "koekje", "appel", "banaan",
-  "voetbal", "ballon",
-  "minecraft", "pokemon",
-  "dinosaurus", "t-rex", "stegosaurus", "triceratops"
-]
+{
+  "categorieen": [
+    {
+      "naam": "Dieren",
+      "icoon": "🐾",
+      "termen": [
+        "hond", "kat", "paard", "konijn", "beer", "leeuw", "tijger",
+        "olifant", "giraffe", "aap", "dolfijn", "haai", "vogel", "kikker",
+        "krokodil", "zebra", "schaap", "eend", "uil", "vos", "wolf",
+        "muis", "pinguin", "dinosaurus", "t-rex"
+      ]
+    },
+    {
+      "naam": "Vervoer",
+      "icoon": "🚗",
+      "termen": [
+        "auto", "trein", "vliegtuig", "boot", "raket", "fiets",
+        "tractor", "bus", "helikopter", "motor", "brandweerauto", "politieauto"
+      ]
+    },
+    {
+      "naam": "Helden & Sprookjes",
+      "icoon": "👸",
+      "termen": [
+        "prinses", "prins", "ridder", "fee", "eenhoorn", "draak",
+        "zeemeermin", "superheld", "tovenaar", "heks", "robot", "piraat"
+      ]
+    },
+    {
+      "naam": "Feest",
+      "icoon": "🎉",
+      "termen": [
+        "verjaardag", "gefeliciteerd", "jarig", "taart", "ballon", "cadeau",
+        "kerst", "kerstboom", "sneeuwman", "pasen", "halloween", "sinterklaas"
+      ]
+    },
+    {
+      "naam": "Natuur",
+      "icoon": "🌿",
+      "termen": [
+        "boom", "bloem", "vlinder", "bij", "regenboog", "zon",
+        "maan", "ster", "wolk", "paddenstoel", "sneeuwvlok", "zeester"
+      ]
+    }
+  ]
+}
