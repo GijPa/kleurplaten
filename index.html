@@ -80,6 +80,18 @@
       color: #1d2430;
       font-size: 16px; /* voorkomt autozoom op iOS en Android bij aanraken */
     }
+    input[type="search"]::-webkit-search-cancel-button { display: none; }
+    .search-input-wrap { position: relative; }
+    .search-input-wrap input { padding-right: 34px; width: 100%; box-sizing: border-box; }
+    #queryClearBtn {
+      position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+      width: 26px; height: 26px; min-height: unset;
+      padding: 0; border: none; background: none;
+      color: #8899aa; font-size: 13px; cursor: pointer;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    }
+    #queryClearBtn:hover { color: #344255; background: #e0e8f0; }
+    #queryClearBtn[hidden] { display: none !important; }
 
     input:focus, select:focus {
       outline: 2px solid #b8d7f4;
@@ -759,7 +771,10 @@
   <form class="toolbar" id="searchForm">
     <label>
       Zoekterm
-      <input id="query" type="search" value="" placeholder="Bijv: giraffe, hond, prinses..." autocomplete="off">
+      <div class="search-input-wrap">
+        <input id="query" type="search" value="" placeholder="Bijv: giraffe, hond, prinses..." autocomplete="off">
+        <button type="button" id="queryClearBtn" hidden title="Wissen">&#10005;</button>
+      </div>
     </label>
 
     <label>
@@ -1232,6 +1247,8 @@
     // ===== MAIN SEARCH =====
     const form = document.getElementById('searchForm');
     const queryInput = document.getElementById('query');
+    const queryClearBtn = document.getElementById('queryClearBtn');
+    function updateQueryClearBtn() { queryClearBtn.hidden = !queryInput.value; }
     const providerInput = document.getElementById('provider');
     const countInput = document.getElementById('count');
     const searchButton = document.getElementById('searchButton');
@@ -2333,7 +2350,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
           renderSearchHistory();
         });
         chip.appendChild(remove);
-        chip.addEventListener('click', () => { queryInput.value = q; search(); });
+        chip.addEventListener('click', () => { queryInput.value = q; updateQueryClearBtn(); search(); });
         bar.appendChild(chip);
       });
     }
@@ -2434,6 +2451,12 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     // ===== EVENT LISTENERS =====
     form.addEventListener('submit', e => { e.preventDefault(); search(); });
+    queryInput.addEventListener('input', updateQueryClearBtn);
+    queryClearBtn.addEventListener('click', () => {
+      queryInput.value = '';
+      queryClearBtn.hidden = true;
+      queryInput.focus();
+    });
     printButton.addEventListener('click', () => {
       if (cropStage.hidden) return;
       const imgUrl = preparePrintImage() || currentImageUrl;
