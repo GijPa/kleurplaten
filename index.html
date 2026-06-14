@@ -745,7 +745,9 @@
 
     @media (max-width: 900px) {
       body { height: auto; min-height: 100vh; overflow: auto; grid-template-rows: auto auto auto auto; }
-      .toolbar { grid-template-columns: 1fr 1fr; position: sticky; top: 0; z-index: 5; }
+      .toolbar { grid-template-columns: 1fr auto auto; position: sticky; top: 0; z-index: 5; }
+      #searchButton .btn-label, #favoritesViewButton .btn-label { display: none; }
+      #searchButton, #favoritesViewButton { min-width: 44px; width: 44px; padding: 0; font-size: 18px; justify-content: center; }
       main { grid-template-columns: 1fr; height: auto; overflow: visible; }
       .results-panel { height: 58vh; min-height: 360px; border-bottom: 2px solid #c6d2df; }
       .viewer-panel { border-left: 0; border-top: 2px solid #c6d2df; height: 72vh; min-height: 560px; }
@@ -759,7 +761,6 @@
     @media (max-width: 560px) {
       header { align-items: flex-start; flex-direction: column; gap: 6px; }
       .status { text-align: left; }
-      .toolbar { grid-template-columns: 1fr; gap: 8px; }
       button { min-height: 42px; }
       .viewer-actions { gap: 6px; }
       .viewer-actions > button:not(.icon-button) { flex: 1 1 108px; }
@@ -830,8 +831,8 @@
       </select>
     </label>
 
-    <button id="searchButton" type="submit">Zoeken</button>
-    <button class="secondary" id="favoritesViewButton" type="button">Favorieten</button>
+    <button id="searchButton" type="submit"><span class="btn-icon">&#128269;</span><span class="btn-label">Zoeken</span></button>
+    <button class="secondary" id="favoritesViewButton" type="button"><span class="btn-icon">&#9825;</span><span class="btn-label">Favorieten</span></button>
 
     <details class="parent-settings" id="parentSettings">
       <summary>Instellingen</summary>
@@ -1390,7 +1391,7 @@
     async function loadSuggestions() {
       try {
         const r = await fetch('zoektermen.json');
-        if (r.ok) suggestions = await r.json();
+        if (r.ok) { suggestions = await r.json(); renderSuggestions(); }
       } catch { /* fetch niet beschikbaar (bijv. lokaal zonder server) */ }
     }
     function getAllSuggestionTerms() {
@@ -2353,7 +2354,10 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     }
     function updateFavoritesButton() {
       const count = Object.keys(favorites).length;
-      favoritesViewButton.textContent = showingFavorites ? 'Terug naar zoeken' : `Favorieten (${count})`;
+      favoritesViewButton.querySelector('.btn-label').textContent =
+        showingFavorites ? 'Terug naar zoeken' : `Favorieten (${count})`;
+      favoritesViewButton.querySelector('.btn-icon').textContent =
+        showingFavorites ? '←' : '♡';
       favoritesViewButton.classList.toggle('favorite-active', showingFavorites);
     }
     function updateFavoriteUi() {
@@ -2374,8 +2378,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         queryInput.value = term;
         updateQueryClearBtn();
         activeSuggestionCategory = null;
-        suggestionsBar.hidden = true;
         search();
+        renderSuggestions();
       });
       return chip;
     }
@@ -2553,13 +2557,12 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     // ===== EVENT LISTENERS =====
     form.addEventListener('submit', e => { e.preventDefault(); search(); });
-    queryInput.addEventListener('focus', renderSuggestions);
-    queryInput.addEventListener('blur', () => setTimeout(() => { suggestionsBar.hidden = true; activeSuggestionCategory = null; }, 200));
     queryInput.addEventListener('input', () => { updateQueryClearBtn(); renderSuggestions(); });
     queryClearBtn.addEventListener('click', () => {
       queryInput.value = '';
       queryClearBtn.hidden = true;
       activeSuggestionCategory = null;
+      renderSuggestions();
       queryInput.focus();
     });
     printButton.addEventListener('click', () => {
