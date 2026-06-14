@@ -715,6 +715,7 @@
       cursor: pointer; color: #4a3870; line-height: 1.5; white-space: nowrap;
     }
     .suggestion-chip:hover { background: #ebe0ff; border-color: #7c55c8; color: #3a2060; }
+    .bar-row-break { flex-basis: 100%; height: 1px; background: #ddd4f0; margin: 2px 0; }
     .search-history-bar {
       flex-wrap: wrap;
       gap: 6px;
@@ -748,6 +749,7 @@
       .toolbar { grid-template-columns: 1fr auto auto; position: sticky; top: 0; z-index: 5; }
       #searchButton .btn-label, #favoritesViewButton .btn-label { display: none; }
       #searchButton, #favoritesViewButton { min-width: 44px; width: 44px; padding: 0; font-size: 18px; justify-content: center; }
+      .parent-settings { grid-column: 1 / -1; }
       main { grid-template-columns: 1fr; height: auto; overflow: visible; }
       .results-panel { height: 58vh; min-height: 360px; border-bottom: 2px solid #c6d2df; }
       .viewer-panel { border-left: 0; border-top: 2px solid #c6d2df; height: 72vh; min-height: 560px; }
@@ -866,7 +868,6 @@
   </form>
 
   <div id="suggestionsBar" class="suggestions-bar" hidden></div>
-  <div id="searchHistoryBar" class="search-history-bar" hidden></div>
 
   <main>
     <section class="results-panel">
@@ -2357,7 +2358,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       favoritesViewButton.querySelector('.btn-label').textContent =
         showingFavorites ? 'Terug naar zoeken' : `Favorieten (${count})`;
       favoritesViewButton.querySelector('.btn-icon').textContent =
-        showingFavorites ? '←' : '♡';
+        showingFavorites ? '✕' : '♡';
       favoritesViewButton.classList.toggle('favorite-active', showingFavorites);
     }
     function updateFavoriteUi() {
@@ -2376,9 +2377,10 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       chip.addEventListener('pointerdown', e => {
         e.preventDefault();
         queryInput.value = term;
+        search();
+        queryInput.value = '';
         updateQueryClearBtn();
         activeSuggestionCategory = null;
-        search();
         renderSuggestions();
       });
       return chip;
@@ -2405,7 +2407,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         if (cat) cat.termen.forEach(term => suggestionsBar.appendChild(makeTermChip(term)));
       } else {
         const hasCats = suggestions.categorieen && suggestions.categorieen.length > 0;
-        suggestionsBar.hidden = !hasCats;
+        const history = loadSearchHistory();
+        suggestionsBar.hidden = !hasCats && !history.length;
         suggestions.categorieen.forEach(cat => {
           const btn = document.createElement('button');
           btn.type = 'button'; btn.className = 'suggestion-category-btn';
@@ -2421,6 +2424,29 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
           });
           suggestionsBar.appendChild(btn);
         });
+        if (history.length) {
+          if (hasCats) {
+            const sep = document.createElement('div');
+            sep.className = 'bar-row-break';
+            suggestionsBar.appendChild(sep);
+          }
+          history.forEach(q => {
+            const chip = document.createElement('button');
+            chip.type = 'button'; chip.className = 'history-chip';
+            const text = document.createElement('span'); text.textContent = q;
+            chip.appendChild(text);
+            const rm = document.createElement('span');
+            rm.className = 'chip-remove'; rm.textContent = '✕'; rm.title = 'Verwijder';
+            rm.addEventListener('click', e => {
+              e.stopPropagation();
+              localStorage.setItem(HISTORY_KEY, JSON.stringify(loadSearchHistory().filter(x => x !== q)));
+              renderSuggestions();
+            });
+            chip.appendChild(rm);
+            chip.addEventListener('click', () => { queryInput.value = q; updateQueryClearBtn(); search(); queryInput.value = ''; updateQueryClearBtn(); renderSuggestions(); });
+            suggestionsBar.appendChild(chip);
+          });
+        }
       }
     }
 
@@ -2434,32 +2460,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 10)));
       renderSearchHistory();
     }
-    function renderSearchHistory() {
-      const bar = document.getElementById('searchHistoryBar');
-      if (!bar) return;
-      const history = loadSearchHistory();
-      bar.innerHTML = '';
-      bar.hidden = !history.length;
-      history.forEach(q => {
-        const chip = document.createElement('button');
-        chip.type = 'button'; chip.className = 'history-chip';
-        const text = document.createElement('span');
-        text.textContent = q;
-        chip.appendChild(text);
-        const remove = document.createElement('span');
-        remove.className = 'chip-remove';
-        remove.textContent = '✕';
-        remove.title = 'Verwijder';
-        remove.addEventListener('click', e => {
-          e.stopPropagation();
-          localStorage.setItem(HISTORY_KEY, JSON.stringify(loadSearchHistory().filter(x => x !== q)));
-          renderSearchHistory();
-        });
-        chip.appendChild(remove);
-        chip.addEventListener('click', () => { queryInput.value = q; updateQueryClearBtn(); search(); });
-        bar.appendChild(chip);
-      });
-    }
+    function renderSearchHistory() { renderSuggestions(); }
 
     document.getElementById('clearHistoryButton').addEventListener('click', () => {
       localStorage.removeItem(HISTORY_KEY);
