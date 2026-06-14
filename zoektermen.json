@@ -23,7 +23,7 @@
       "icoon": "👸",
       "termen": [
         "prinses", "prins", "ridder", "fee", "eenhoorn", "draak",
-        "zeemeermin", "superheld", "tovenaar", "heks", "robot", "piraat"
+        "zeemeermin", "superheld", "tovenaar", "heks", "robot", "piraat", "sneeuwman"
       ]
     },
     {
@@ -31,7 +31,7 @@
       "icoon": "🎉",
       "termen": [
         "verjaardag", "gefeliciteerd", "jarig", "taart", "ballon", "cadeau",
-        "kerst", "kerstboom", "sneeuwman", "pasen", "halloween", "sinterklaas"
+        "kerst", "kerstboom", "pasen", "halloween", "sinterklaas"
       ]
     },
     {
@@ -39,7 +39,7 @@
       "icoon": "🌿",
       "termen": [
         "boom", "bloem", "vlinder", "bij", "regenboog", "zon",
-        "maan", "ster", "wolk", "paddenstoel", "sneeuwvlok", "zeester"
+        "maan", "ster", "wolk", "paddenstoel", "sneeuwvlok", "sneeuw", "zeester", "zomer", "herfst", "winter", "lente"
       ]
     }
   ]
