@@ -682,6 +682,21 @@
       border-radius: 4px; padding: 1px 2px; cursor: pointer; background: none;
     }
 
+    .suggestions-bar {
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #f5f0ff;
+      border-bottom: 1px solid #d4c8ee;
+      align-items: center;
+    }
+    .suggestions-bar:not([hidden]) { display: flex; }
+    .suggestion-chip {
+      background: #fff; border: 1px solid #ccc0e0; border-radius: 12px;
+      padding: 3px 11px; font-size: 12px; font-family: inherit;
+      cursor: pointer; color: #4a3870; line-height: 1.5; white-space: nowrap;
+    }
+    .suggestion-chip:hover { background: #ebe0ff; border-color: #7c55c8; color: #3a2060; }
     .search-history-bar {
       flex-wrap: wrap;
       gap: 6px;
@@ -831,6 +846,7 @@
     </details>
   </form>
 
+  <div id="suggestionsBar" class="suggestions-bar" hidden></div>
   <div id="searchHistoryBar" class="search-history-bar" hidden></div>
 
   <main>
@@ -1351,6 +1367,13 @@
     let pencilColor = '#000000';
     let favorites = loadFavorites();
     let showingFavorites = false;
+    let suggestions = [];
+    async function loadSuggestions() {
+      try {
+        const r = await fetch('zoektermen.json');
+        if (r.ok) suggestions = await r.json();
+      } catch { /* fetch niet beschikbaar (bijv. lokaal zonder server) */ }
+    }
 
     async function search() {
       const searchId = ++activeSearchId;
@@ -2318,6 +2341,31 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       viewerFavoriteButton.classList.toggle('favorite-active', active);
     }
 
+    // ===== SUGGESTIONS =====
+    const suggestionsBar = document.getElementById('suggestionsBar');
+    function renderSuggestions() {
+      const q = queryInput.value.trim().toLowerCase();
+      const list = q
+        ? suggestions.filter(s => s.toLowerCase().startsWith(q))
+        : suggestions.slice(0, 20);
+      suggestionsBar.innerHTML = '';
+      suggestionsBar.hidden = !list.length;
+      list.forEach(term => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'suggestion-chip';
+        chip.textContent = term;
+        chip.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          queryInput.value = term;
+          updateQueryClearBtn();
+          suggestionsBar.hidden = true;
+          search();
+        });
+        suggestionsBar.appendChild(chip);
+      });
+    }
+
     // ===== SEARCH HISTORY =====
     function loadSearchHistory() {
       try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
@@ -2451,7 +2499,9 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     // ===== EVENT LISTENERS =====
     form.addEventListener('submit', e => { e.preventDefault(); search(); });
-    queryInput.addEventListener('input', updateQueryClearBtn);
+    queryInput.addEventListener('focus', renderSuggestions);
+    queryInput.addEventListener('blur', () => setTimeout(() => { suggestionsBar.hidden = true; }, 200));
+    queryInput.addEventListener('input', () => { updateQueryClearBtn(); renderSuggestions(); });
     queryClearBtn.addEventListener('click', () => {
       queryInput.value = '';
       queryClearBtn.hidden = true;
@@ -2666,6 +2716,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     updatePrintPreview();
     initColorSwatches();
     renderSearchHistory();
+    loadSuggestions();
   </script>
 </body>
 </html>
