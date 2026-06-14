@@ -684,7 +684,19 @@
       padding: 2px 10px; font-size: 12px; font-family: inherit;
       cursor: pointer; color: #344255; line-height: 1.5; white-space: nowrap;
     }
+    .history-chip { display: inline-flex; align-items: center; gap: 4px; }
     .history-chip:hover { background: #d4e4f5; border-color: #1a4a7a; color: #1a4a7a; }
+    .chip-remove {
+      font-size: 9px; color: #aab5c0; padding: 1px 2px;
+      border-radius: 3px; line-height: 1; cursor: pointer;
+    }
+    .chip-remove:hover { color: #c0392b; background: #ffe0e0; }
+    .settings-clear-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      padding-top: 8px; border-top: 1px solid #d0dce8;
+      grid-column: 1 / -1;
+    }
+    .settings-clear-row button { font-size: 12px; }
 
     @media (max-width: 900px) {
       body { height: auto; min-height: 100vh; overflow: auto; grid-template-rows: auto auto auto auto; }
@@ -796,6 +808,10 @@
             <option value="200">200</option>
           </select>
         </label>
+        <div class="settings-clear-row">
+          <button type="button" id="clearHistoryButton" class="secondary">Wis zoekgeschiedenis</button>
+          <button type="button" id="resetAllButton" class="secondary">Alles resetten</button>
+        </div>
       </div>
     </details>
   </form>
@@ -2303,11 +2319,39 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       bar.hidden = !history.length;
       history.forEach(q => {
         const chip = document.createElement('button');
-        chip.type = 'button'; chip.className = 'history-chip'; chip.textContent = q;
+        chip.type = 'button'; chip.className = 'history-chip';
+        const text = document.createElement('span');
+        text.textContent = q;
+        chip.appendChild(text);
+        const remove = document.createElement('span');
+        remove.className = 'chip-remove';
+        remove.textContent = '✕';
+        remove.title = 'Verwijder';
+        remove.addEventListener('click', e => {
+          e.stopPropagation();
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(loadSearchHistory().filter(x => x !== q)));
+          renderSearchHistory();
+        });
+        chip.appendChild(remove);
         chip.addEventListener('click', () => { queryInput.value = q; search(); });
         bar.appendChild(chip);
       });
     }
+
+    document.getElementById('clearHistoryButton').addEventListener('click', () => {
+      localStorage.removeItem(HISTORY_KEY);
+      renderSearchHistory();
+    });
+    document.getElementById('resetAllButton').addEventListener('click', () => {
+      if (!confirm('Weet je zeker dat je alle zoekgeschiedenis én favorieten wilt verwijderen?')) return;
+      localStorage.removeItem(HISTORY_KEY);
+      localStorage.removeItem(FAVORITES_KEY);
+      favorites = {};
+      renderSearchHistory();
+      if (showingFavorites) { showingFavorites = false; renderResults(currentResults); }
+      updateFavoritesButton();
+      updateFavoriteUi();
+    });
 
     // ===== SETTINGS =====
     function loadSettings() {
