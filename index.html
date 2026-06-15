@@ -729,13 +729,16 @@
       background: #f5f0ff;
       border-bottom: 1px solid #d4c8ee;
       align-items: center;
+      min-width: 0;
     }
     .suggestions-bar:not([hidden]) { display: flex; }
     .categories-scroll {
       display: flex;
       flex-wrap: nowrap;
       overflow-x: auto;
-      flex-basis: 100%;
+      flex: 0 0 100%;
+      max-width: 100%;
+      min-width: 0;
       gap: 6px;
       -ms-overflow-style: none;
       scrollbar-width: none;
