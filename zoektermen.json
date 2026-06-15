@@ -49,15 +49,14 @@
       ]
     },
     {
-      "naam": "Spro",
+      "naam": "Sprookjes",
       "icoon": "👸",
       "termen": [
         "prinses", "prins", "ridder", "fee", "eenhoorn", "draak", "trol", "dwerg", "kabouter", "elf",
         "zeemeermin", "tovenaar", "heks", "robot", "piraat", "sneeuwman",
         "assepoester", "doornroosje", "sneeuwwitje", "belle", "ariel",
         "jasmine", "peter pan", "roodkapje", "pinokkio",
-        "alice in wonderland", "duimelijntje",
-        "tinkerbell", "sprookjesbos", "toverstaf", "magisch kasteel"
+        "alice in wonderland", "tinkerbell", "sprookjesbos", "toverstaf", "magisch kasteel"
       ]
     },
     {
@@ -104,7 +103,7 @@
       "naam": "Sport",
       "icoon": "⚽",
       "termen": [
-        "voetbal", "tennis", "basketbal", "volleybal", "honkbal",
+        "voetbal", "tennis", "basketbal", "volleybal", "honkbal", "handbal",
         "zwemmen", "duiken", "surfen",
         "ballet", "dans", "gymnastiek", "turnen", "yoga",
         "fietsen", "wielrennen",
