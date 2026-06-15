@@ -1698,6 +1698,7 @@
       setCropButtonsEnabled(true);
       updateFavoriteUi();
       setStatus('Kleurplaat geopend in de viewer.');
+      primeShareCache();
 
       // On mobile (stacked layout) scroll viewer into view
       if (window.innerWidth <= 900) {
@@ -1706,6 +1707,7 @@
     }
 
     function clearSelection() {
+      _sharePdfCache = null;
       if (selectedTile) selectedTile.classList.remove('selected');
       selectedTile = null;
       selectedResult = null;
@@ -2726,68 +2728,94 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     });
     pdfButton.addEventListener('click', () => { if (!cropStage.hidden) openPrintPdf(); });
 
-    async function openSharePrint() {
-      if (!currentImageUrl || cropStage.hidden) return;
-      setStatus('Bezig met voorbereiden...');
-      shareButton.disabled = true;
-      try {
-        let pngDataUrl;
+    let _sharePdfCache = null; // { url, orientation, margin, blob }
 
-        if (currentImageUrl.startsWith('data:')) {
-          // Na bewerken: data URL is altijd beschikbaar zonder proxy
-          const img = await loadImg(currentImageUrl);
+    async function buildShareBlob(url, orientation, margin) {
+      let pngDataUrl;
+      if (url.startsWith('data:')) {
+        const img = await loadImg(url);
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth || 800; c.height = img.naturalHeight || 600;
+        const cx = c.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
+        cx.drawImage(img, 0, 0);
+        pngDataUrl = c.toDataURL('image/png');
+      } else {
+        const resp = await timedFetch(imageProxyUrl(url));
+        if (!resp.ok) throw new Error(`Afbeelding laden mislukt (HTTP ${resp.status})`);
+        const blob = await resp.blob();
+        const objUrl = URL.createObjectURL(blob);
+        try {
+          const img = await loadImg(objUrl);
+          const maxSide = 3200;
+          const sc = Math.min(1, maxSide / Math.max(img.naturalWidth || 800, img.naturalHeight || 600));
           const c = document.createElement('canvas');
-          c.width = img.naturalWidth || 800; c.height = img.naturalHeight || 600;
+          c.width = Math.max(1, Math.round((img.naturalWidth || 800) * sc));
+          c.height = Math.max(1, Math.round((img.naturalHeight || 600) * sc));
           const cx = c.getContext('2d');
           cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
-          cx.drawImage(img, 0, 0);
+          cx.drawImage(img, 0, 0, c.width, c.height);
           pngDataUrl = c.toDataURL('image/png');
-        } else {
-          // Externe URL: haal op via proxy met timeout (timedFetch heeft 25s abort)
-          const resp = await timedFetch(imageProxyUrl(currentImageUrl));
-          if (!resp.ok) throw new Error(`Afbeelding laden mislukt (HTTP ${resp.status})`);
-          const blob = await resp.blob();
-          const objUrl = URL.createObjectURL(blob);
-          try {
-            const img = await loadImg(objUrl);
-            const maxSide = 3200;
-            const sc = Math.min(1, maxSide / Math.max(img.naturalWidth || 800, img.naturalHeight || 600));
-            const c = document.createElement('canvas');
-            c.width = Math.max(1, Math.round((img.naturalWidth || 800) * sc));
-            c.height = Math.max(1, Math.round((img.naturalHeight || 600) * sc));
-            const cx = c.getContext('2d');
-            cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
-            cx.drawImage(img, 0, 0, c.width, c.height);
-            pngDataUrl = c.toDataURL('image/png');
-          } finally {
-            URL.revokeObjectURL(objUrl);
-          }
+        } finally {
+          URL.revokeObjectURL(objUrl);
         }
+      }
+      const pdfBytes = buildPdf(pngDataUrl, orientation, margin);
+      return new Blob([pdfBytes], { type: 'application/pdf' });
+    }
 
-        const pdfBytes = buildPdf(pngDataUrl, printOrientation.value, printMargin.value);
-        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const file = new File([pdfBlob], 'kleurplaat.pdf', { type: 'application/pdf' });
+    function primeShareCache() {
+      if (!navigator.canShare) return;
+      const url = currentImageUrl;
+      const orientation = printOrientation.value;
+      const margin = printMargin.value;
+      if (!url) return;
+      _sharePdfCache = null;
+      buildShareBlob(url, orientation, margin)
+        .then(blob => { _sharePdfCache = { url, orientation, margin, blob }; })
+        .catch(() => {});
+    }
 
+    async function openSharePrint() {
+      if (!currentImageUrl || cropStage.hidden) return;
+      const url = currentImageUrl;
+      const orientation = printOrientation.value;
+      const margin = printMargin.value;
+
+      let pdfBlob;
+      const cache = _sharePdfCache;
+      if (cache && cache.url === url && cache.orientation === orientation && cache.margin === margin) {
+        pdfBlob = cache.blob;
+      } else {
+        setStatus('Bezig met voorbereiden...');
+        shareButton.disabled = true;
+        try {
+          pdfBlob = await buildShareBlob(url, orientation, margin);
+          _sharePdfCache = { url, orientation, margin, blob: pdfBlob };
+        } catch (e) {
+          setStatus(`Print PDF mislukt: ${e.message}`);
+          shareButton.disabled = false;
+          return;
+        }
+        shareButton.disabled = false;
+      }
+
+      const file = new File([pdfBlob], 'kleurplaat.pdf', { type: 'application/pdf' });
+      try {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: 'Kleurplaat' });
           setStatus('Gedeeld.');
         } else {
-          // Geen Web Share ondersteuning: PDF downloaden
-          const url = URL.createObjectURL(pdfBlob);
+          const blobUrl = URL.createObjectURL(pdfBlob);
           const a = document.createElement('a');
-          a.href = url; a.download = 'kleurplaat.pdf';
+          a.href = blobUrl; a.download = 'kleurplaat.pdf';
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(url), 300000);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 300000);
           setStatus('PDF opgeslagen.');
         }
       } catch (e) {
-        if (e.name === 'AbortError') {
-          setStatus('Delen geannuleerd.');
-        } else {
-          setStatus(`Print PDF mislukt: ${e.message}`);
-        }
-      } finally {
-        shareButton.disabled = false;
+        if (e.name !== 'AbortError') setStatus(`Print PDF mislukt: ${e.message}`);
+        else setStatus('Delen geannuleerd.');
       }
     }
 
