@@ -19,11 +19,24 @@
       ]
     },
     {
-      "naam": "Helden & Sprookjes",
+      "naam": "Helden",
+      "icoon": "🦸",
+      "termen": [
+        "spiderman", "batman", "superman", "hulk", "ironman", "thor",
+        "captain america", "wonder woman", "flash", "avengers",
+        "sonic", "mario", "luigi", "pikachu", "pokemon",
+        "naruto", "goku", "dragon ball",
+        "paw patrol", "ninjago", "transformers",
+        "spongebob", "minions", "scooby doo",
+        "superheld", "ninja"
+      ]
+    },
+    {
+      "naam": "Sprookjes",
       "icoon": "👸",
       "termen": [
-        "spiderman", "batman", "superman", "marvel", "disney", "pokemon", "pikachu", "prinses", "prins", "ridder", "fee", "eenhoorn", "draak",
-        "zeemeermin", "superheld", "tovenaar", "heks", "robot", "piraat", "sneeuwman"
+        "prinses", "prins", "ridder", "fee", "eenhoorn", "draak",
+        "zeemeermin", "tovenaar", "heks", "robot", "piraat", "sneeuwman"
       ]
     },
     {
