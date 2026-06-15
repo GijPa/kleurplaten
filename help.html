@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Help – Kleurplaten Zoeken</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Tahoma, Arial, sans-serif;
+      font-size: 14px;
+      color: #1d2430;
+      background: #f5f0ff;
+      padding: 0;
+    }
+
+    .help-header {
+      background: #1a4a7a;
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .help-header h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .help-close {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.4);
+      color: #fff;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .help-close:hover { background: rgba(255,255,255,0.3); }
+
+    .help-content {
+      padding: 16px 20px 24px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      font-size: 15px;
+      color: #1a4a7a;
+      border-bottom: 2px solid #c0b0e0;
+      padding-bottom: 4px;
+      margin: 22px 0 10px;
+    }
+
+    h2:first-child { margin-top: 6px; }
+
+    h3 {
+      font-size: 13px;
+      color: #3a2870;
+      margin: 14px 0 5px;
+    }
+
+    p { margin: 5px 0 8px; line-height: 1.55; }
+
+    ul {
+      margin: 4px 0 10px;
+      padding-left: 20px;
+    }
+
+    ul li { margin-bottom: 5px; line-height: 1.5; }
+
+    .tip {
+      background: #fff;
+      border-left: 3px solid #7b5ea7;
+      border-radius: 0 8px 8px 0;
+      padding: 8px 12px;
+      margin: 8px 0;
+      font-size: 13px;
+      color: #3a2870;
+    }
+
+    .icon-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #eee8ff;
+      border: 1px solid #c0b0e0;
+      border-radius: 12px;
+      padding: 2px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #3a2870;
+      white-space: nowrap;
+    }
+
+    .btn-demo {
+      display: inline-block;
+      background: #1a4a7a;
+      color: #fff;
+      border-radius: 8px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .btn-demo.sec {
+      background: #e8e0f8;
+      color: #3a2870;
+    }
+  </style>
+</head>
+<body>
+
+<div class="help-header">
+  <h1>❓ Hulp & Uitleg</h1>
+  <button class="help-close" onclick="window.parent.postMessage('closeHelp','*')" title="Sluiten">✕</button>
+</div>
+
+<div class="help-content">
+
+  <h2>🔍 Zoeken</h2>
+  <p>Typ een woord in de zoekbalk en klik op <span class="btn-demo">🔍</span> of druk op Enter. De app zoekt dan kleurplaten op het internet.</p>
+  <ul>
+    <li>Gebruik enkelvoudige woorden voor de beste resultaten: <em>hond</em>, <em>giraffe</em>, <em>prinses</em>.</li>
+    <li>Het kruisje <span class="icon-pill">✕</span> in de zoekbalk wist wat je hebt getypt.</li>
+    <li>Klik op een kleurplaat om hem te openen en te bewerken of printen.</li>
+  </ul>
+
+  <h2>💡 Suggesties en zoektermen</h2>
+  <p>Onder de zoekbalk staan categoriëknoppen met veel handige zoekwoorden:</p>
+  <ul>
+    <li>Klik op een categorie (bijv. <span class="icon-pill">🐾 Dieren</span>) om alle termen in die categorie te zien.</li>
+    <li>Klik op een term om er meteen op te zoeken.</li>
+    <li>← Terug brengt je terug naar alle categorieën.</li>
+    <li>Als je begint te typen, worden automatisch overeenkomende termen getoond.</li>
+    <li>Het woord in de zoekbalk wordt ook alvast aangevuld — de grijs geselecteerde tekst is de aanvulling.</li>
+  </ul>
+  <div class="tip">Heb je eerder gezocht? Je zoekopdrachten worden als chips bewaard, zodat je ze snel opnieuw kunt gebruiken. Klik op ✕ naast een chip om hem te verwijderen.</div>
+
+  <h2>❤️ Favorieten</h2>
+  <p>Klik op het hartje onder een kleurplaat om hem op te slaan als favoriet. Zo vind je hem snel terug.</p>
+  <ul>
+    <li>Klik op <span class="btn-demo sec">♡ Favorieten</span> om al je opgeslagen kleurplaten te bekijken.</li>
+    <li>Klik nogmaals op het hartje om een favoriet te verwijderen.</li>
+    <li>Klik op ✕ in het favorieten-overzicht om terug te gaan naar de zoekresultaten.</li>
+  </ul>
+
+  <h2>✏️ Kleurplaat bewerken</h2>
+  <p>Klik op een kleurplaat om hem te openen in de bewerker. Hiermee kun je de kleurplaat digitaal inkleuren of aanpassen voor je hem print.</p>
+  <ul>
+    <li><strong>Penseel:</strong> teken vrij op de kleurplaat.</li>
+    <li><strong>Verfemmer:</strong> vul een vlak in met één kleur.</li>
+    <li><strong>Gum:</strong> wis wat je hebt getekend.</li>
+    <li><strong>Kleurkiezer:</strong> kies een kleur om mee te tekenen.</li>
+    <li><strong>■ (grootte):</strong> stel de dikte van het penseel of de gum in met de schuifregelaar.</li>
+    <li><strong>Ongedaan / Opnieuw:</strong> ↩ maakt de laatste stap ongedaan, ↪ zet hem terug.</li>
+    <li><strong>Reset:</strong> wist alle bewerkingen en keert terug naar de originele kleurplaat.</li>
+    <li><strong>Printen:</strong> print de kleurplaat direct vanuit de bewerker.</li>
+  </ul>
+  <div class="tip">Op mobiel kun je met je vinger tekenen. Gebruik twee vingers om te scrollen zonder te tekenen.</div>
+
+  <h2>⚙️ Instellingen</h2>
+  <p>Klik op <span class="btn-demo sec">Instellingen</span> in de zoekbalk om de opties te openen.</p>
+
+  <h3>🛡️ Kindvriendelijke modus</h3>
+  <p>Standaard <strong>aan</strong>. Blokkeert zoektermen die niet geschikt zijn voor kinderen. Resultaten worden gefilterd op veiligheid. De zoekmachines worden ingesteld op de veiligste modus.</p>
+
+  <h3>🔒 Extra veilig filter</h3>
+  <p>Standaard <strong>uit</strong>. Als dit aan staat, mag er alleen worden gezocht op woorden die in de categorielijst staan (de categorieknoppen onder de zoekbalk). Dit beperkt het zoeken volledig tot veilige, vooraf goedgekeurde woorden.</p>
+
+  <h3>📋 Bron en aantallen tonen</h3>
+  <p>Standaard <strong>uit</strong>. Als dit aan staat, verschijnen extra opties naast de zoekbalk: kies een andere zoekmachine (bron) of stel in hoeveel resultaten je wilt zien.</p>
+
+  <h3>🔢 Standaard aantal</h3>
+  <p>Hiermee stel je in hoeveel kleurplaten er standaard worden geladen bij een zoekopdracht.</p>
+
+  <h3>Wis zoekgeschiedenis</h3>
+  <p>Verwijdert alle opgeslagen zoekwoorden (de chips onder de zoekbalk).</p>
+
+  <h3>Alles resetten</h3>
+  <p>Wist alle instellingen, zoekgeschiedenis én favorieten en keert terug naar de standaardinstellingen.</p>
+
+</div>
+
+</body>
+</html>

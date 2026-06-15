@@ -7,7 +7,14 @@
         "hond", "kat", "paard", "konijn", "beer", "leeuw", "tijger",
         "olifant", "giraffe", "aap", "dolfijn", "haai", "vogel", "kikker",
         "krokodil", "zebra", "schaap", "eend", "uil", "vos", "wolf",
-        "muis", "pinguin", "dinosaurus", "t-rex"
+        "muis", "pinguin", "dinosaurus", "t-rex",
+        "kameel", "flamingo", "gorilla", "krab", "octopus", "schildpad",
+        "panda", "koala", "kangoeroe", "neushoorn", "nijlpaard",
+        "cheetah", "struisvogel", "papegaai", "kolibrie", "pelikaan",
+        "walrus", "zeehond", "ijsbeer", "hamster", "cavia",
+        "lama", "alpaca", "hert", "egel", "wasbeer",
+        "kip", "haan", "gans", "kalkoen",
+        "clownvis", "kameleon", "slak", "lieveheersbeestje", "mier"
       ]
     },
     {
@@ -15,7 +22,11 @@
       "icoon": "🚗",
       "termen": [
         "auto", "sportauto", "cars", "trein", "vliegtuig", "boot", "raket", "fiets",
-        "tractor", "bus", "helikopter", "motor", "brandweerauto", "politieauto"
+        "tractor", "bus", "helikopter", "motor", "brandweerauto", "politieauto",
+        "ambulance", "vrachtwagen", "graafmachine", "kraan", "bulldozer",
+        "vuilniswagen", "schoolbus", "taxi", "raceauto", "quad",
+        "brommer", "step", "zeilboot", "speedboot", "onderzeeër",
+        "luchtballon", "ruimteschip", "tram", "stoomtrein", "paardenkoets", "slee"
       ]
     },
     {
@@ -28,7 +39,13 @@
         "naruto", "goku", "dragon ball",
         "paw patrol", "ninjago", "transformers",
         "spongebob", "minions", "scooby doo",
-        "superheld", "ninja"
+        "superheld", "ninja",
+        "black panther", "captain marvel", "aquaman", "wolverine",
+        "bluey", "peppa pig", "pj masks", "miraculous",
+        "elsa", "anna", "rapunzel", "moana",
+        "buzz lightyear", "woody", "mcqueen",
+        "kirby", "donkey kong", "yoshi", "pac man",
+        "superheld meisje", "ridder", "detective"
       ]
     },
     {
@@ -36,7 +53,11 @@
       "icoon": "👸",
       "termen": [
         "prinses", "prins", "ridder", "fee", "eenhoorn", "draak", "trol", "dwerg", "kabouter", "elf",
-        "zeemeermin", "tovenaar", "heks", "robot", "piraat", "sneeuwman"
+        "zeemeermin", "tovenaar", "heks", "robot", "piraat", "sneeuwman",
+        "assepoester", "doornroosje", "sneeuwwitje", "belle", "ariel",
+        "jasmine", "peter pan", "roodkapje", "pinokkio",
+        "alice in wonderland", "duimelijntje",
+        "tinkerbell", "sprookjesbos", "toverstaf", "magisch kasteel"
       ]
     },
     {
@@ -44,7 +65,11 @@
       "icoon": "🎉",
       "termen": [
         "verjaardag", "gefeliciteerd", "jarig", "taart", "ballon", "cadeau",
-        "kerst", "kerstboom", "pasen", "halloween", "sinterklaas"
+        "kerst", "kerstboom", "pasen", "halloween", "sinterklaas",
+        "kerstman", "kerstbal", "rendier", "sneeuwpop",
+        "paasei", "paashaas", "zwarte piet", "pakjesavond", "pepernoot",
+        "vuurwerk", "nieuwjaar", "confetti", "slingers",
+        "feesthoed", "verkleedkleding", "masker", "carnaval"
       ]
     },
     {
@@ -52,7 +77,44 @@
       "icoon": "🌿",
       "termen": [
         "boom", "bloem", "vlinder", "bij", "regenboog", "zon",
-        "maan", "ster", "wolk", "paddenstoel", "sneeuwvlok", "sneeuw", "zeester", "zomer", "herfst", "winter", "lente"
+        "maan", "ster", "wolk", "paddenstoel", "sneeuwvlok", "sneeuw",
+        "zeester", "zomer", "herfst", "winter", "lente",
+        "roos", "tulp", "zonnebloem", "madeliefje", "paardenbloem",
+        "kersenbloesem", "cactus", "appelboom", "palmboom", "dennenboom",
+        "waterval", "rivier", "meer", "strand", "berg", "vulkaan",
+        "jungle", "bos", "koraalrif", "ijsberg", "woestijn",
+        "zonsondergang", "sterrenhemel", "aurora", "onweer", "regenboog"
+      ]
+    },
+    {
+      "naam": "Eten",
+      "icoon": "🍎",
+      "termen": [
+        "appel", "banaan", "aardbei", "watermeloen", "druiven", "ananas",
+        "mango", "kiwi", "peer", "kers", "sinaasappel", "citroen",
+        "taart", "koekje", "donut", "ijs", "snoep", "chocolade",
+        "lolly", "cupcake", "wafel", "pannenkoek", "stroopwafel",
+        "pizza", "hamburger", "friet", "sandwich", "brood", "croissant",
+        "spaghetti", "soep", "salade",
+        "wortel", "broccoli", "maïs", "tomaat", "pompoen",
+        "melk", "kaas", "ei", "cake", "speculaas"
+      ]
+    },
+    {
+      "naam": "Sport",
+      "icoon": "⚽",
+      "termen": [
+        "voetbal", "tennis", "basketbal", "volleybal", "honkbal",
+        "zwemmen", "duiken", "surfen",
+        "ballet", "dans", "gymnastiek", "turnen", "yoga",
+        "fietsen", "wielrennen",
+        "schaatsen", "ijshockey", "skiën", "snowboarden",
+        "hardlopen", "atletiek",
+        "paardrijden", "boogschieten", "klimmen",
+        "karate", "judo", "taekwondo",
+        "golf", "bowling", "badminton", "tafeltennis",
+        "zwembad", "stadion", "speeltuin",
+        "trofee", "medaille", "olympische spelen"
       ]
     }
   ]
