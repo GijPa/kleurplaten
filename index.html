@@ -1003,7 +1003,8 @@
     // wsrv.nl is a dedicated image proxy — used only for editor/PDF canvas operations (needs CORS)
     const imageProxyUrl = url => `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
     const FETCH_TIMEOUT = 25000;
-    const BLOCKED_WORDS = ["adult","sexy","nude","naakt","bikini","lingerie","horror","blood","bloody","weapon","gun","violence","death","casino","beer","wine","drugs","alcohol","roken","porno","porn","wapen","wapens","bloot"];
+    const BLOCKED_WORDS = ["adult","sexy","nude","naakt","piemel","penis","kut","vagina","neuken","vrijen","pussy","vingeren","kill","moord","bikini","lingerie","horror","blood","bloody","weapon","gun","violence","death","casino","wine","drugs","alcohol","roken","porno","porn","wapen","wapens","bloot","sex","seks","erotisch","nackt","xxx"];
+    const BLOCKED_QUERIES = ["sex","seks","sexueel","seksueel","porn","porno","naakt","nude","erotisch","bloot","nackt","xxx","adult","18+","wapen","pistool","geweer","bom","drugs","cocaine","wiet","alcohol","bier","wijn"];
     const FAVORITES_KEY = 'kleurplaten-favorieten-v1';
     const SETTINGS_KEY = 'kleurplaten-ouderinstellingen-v1';
     const HISTORY_KEY = 'kleurplaten-zoekhistorie-v1';
@@ -1407,6 +1408,16 @@
         ? Number(parentDefaultCount.value) : Number(countInput.value);
 
       if (!query) { showMessage('Vul eerst een zoekterm in.','error'); return; }
+      if (kidModeToggle.checked) {
+        const q = query.toLowerCase();
+        if (BLOCKED_QUERIES.some(w => q.includes(w))) {
+          showMessage('Deze zoekterm is niet beschikbaar. Probeer iets anders!', 'error');
+          queryInput.value = '';
+          updateQueryClearBtn();
+          renderSuggestions();
+          return;
+        }
+      }
 
       showingFavorites = false;
       updateFavoritesButton();
