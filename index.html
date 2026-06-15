@@ -820,8 +820,10 @@
     }
 
     @media (max-width: 560px) {
-      header { align-items: flex-start; flex-direction: column; gap: 6px; }
-      .status { text-align: left; }
+      header { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+      header h1 { flex: 1; }
+      header .help-btn { flex-shrink: 0; }
+      .status { flex-basis: 100%; text-align: left; order: 3; }
       button { min-height: 42px; }
       .viewer-actions { gap: 6px; }
       .viewer-actions > button:not(.icon-button) { flex: 1 1 108px; }
