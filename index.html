@@ -51,6 +51,46 @@
       text-align: right;
     }
 
+    .help-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.45);
+      color: #fff;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .help-btn:hover { background: rgba(255,255,255,0.3); }
+
+    #helpModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.55);
+      align-items: center;
+      justify-content: center;
+    }
+    #helpModal.open { display: flex; }
+
+    #helpModal iframe {
+      width: min(680px, 96vw);
+      height: min(85vh, 700px);
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+      background: #f5f0ff;
+    }
+
     .toolbar {
       background: #fff;
       border-bottom: 2px solid #c6d2df;
@@ -805,7 +845,12 @@
   <header>
     <h1>Kleurplaten zoeken</h1>
     <div class="status" id="status">Kies een zoekterm en klik op Zoeken.</div>
+    <button class="help-btn" id="helpBtn" type="button" title="Help">?</button>
   </header>
+
+  <div id="helpModal" role="dialog" aria-modal="true" aria-label="Help">
+    <iframe id="helpFrame" src="help.html" title="Help"></iframe>
+  </div>
 
   <form class="toolbar" id="searchForm">
     <label>
@@ -2820,6 +2865,14 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     initColorSwatches();
     renderSearchHistory();
     loadSuggestions();
+
+    // Help modal
+    const helpBtn = document.getElementById('helpBtn');
+    const helpModal = document.getElementById('helpModal');
+    helpBtn.addEventListener('click', () => helpModal.classList.add('open'));
+    helpModal.addEventListener('click', e => { if (e.target === helpModal) helpModal.classList.remove('open'); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') helpModal.classList.remove('open'); });
+    window.addEventListener('message', e => { if (e.data === 'closeHelp') helpModal.classList.remove('open'); });
   </script>
 </body>
 </html>
