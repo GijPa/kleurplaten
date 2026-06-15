@@ -731,11 +731,18 @@
       align-items: center;
     }
     .suggestions-bar:not([hidden]) { display: flex; }
+    .suggestions-bar.categories-mode {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .suggestions-bar.categories-mode::-webkit-scrollbar { display: none; }
     .suggestion-category-btn {
       background: #fff; border: 1.5px solid #c0b0e0; border-radius: 20px;
       padding: 6px 14px; font-size: 14px; font-family: inherit;
       cursor: pointer; color: #3a2870; line-height: 1.4;
-      white-space: nowrap; font-weight: 600;
+      white-space: nowrap; font-weight: 600; flex-shrink: 0;
       display: inline-flex; align-items: center; gap: 5px;
     }
     .suggestion-category-btn:hover { background: #ebe0ff; border-color: #7c55c8; }
@@ -755,6 +762,12 @@
       cursor: pointer; color: #4a3870; line-height: 1.5; white-space: nowrap;
     }
     .suggestion-chip:hover { background: #ebe0ff; border-color: #7c55c8; color: #3a2060; }
+    .suggestion-more-btn {
+      background: #e8e0f8; border: 1px solid #c0b0e0; border-radius: 12px;
+      padding: 3px 11px; font-size: 12px; font-family: inherit;
+      cursor: pointer; color: #3a2870; line-height: 1.5; white-space: nowrap; font-weight: 600;
+    }
+    .suggestion-more-btn:hover { background: #d8c8f8; border-color: #7c55c8; }
     .bar-row-break { flex-basis: 100%; height: 1px; background: #ddd4f0; margin: 2px 0; }
     .search-history-bar {
       flex-wrap: wrap;
@@ -2461,9 +2474,11 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       });
       return chip;
     }
+    const CHIPS_INITIAL = 12;
     function renderSuggestions() {
       const q = queryInput.value.trim().toLowerCase();
       suggestionsBar.innerHTML = '';
+      suggestionsBar.classList.remove('categories-mode');
       if (q) {
         const list = [...new Set(getAllSuggestionTerms().filter(s => s.toLowerCase().startsWith(q)))];
         suggestionsBar.hidden = !list.length;
@@ -2480,8 +2495,25 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         });
         suggestionsBar.appendChild(back);
         const cat = suggestions.categorieen.find(c => c.naam === activeSuggestionCategory);
-        if (cat) cat.termen.forEach(term => suggestionsBar.appendChild(makeTermChip(term)));
+        if (cat) {
+          const termen = cat.termen;
+          const visible = termen.slice(0, CHIPS_INITIAL);
+          const rest = termen.slice(CHIPS_INITIAL);
+          visible.forEach(term => suggestionsBar.appendChild(makeTermChip(term)));
+          if (rest.length > 0) {
+            const moreBtn = document.createElement('button');
+            moreBtn.type = 'button'; moreBtn.className = 'suggestion-more-btn';
+            moreBtn.textContent = `Meer tonen (${rest.length})`;
+            moreBtn.addEventListener('pointerdown', e => {
+              e.preventDefault();
+              moreBtn.remove();
+              rest.forEach(term => suggestionsBar.appendChild(makeTermChip(term)));
+            });
+            suggestionsBar.appendChild(moreBtn);
+          }
+        }
       } else {
+        suggestionsBar.classList.add('categories-mode');
         const hasCats = suggestions.categorieen && suggestions.categorieen.length > 0;
         const history = loadSearchHistory();
         suggestionsBar.hidden = !hasCats && !history.length;
