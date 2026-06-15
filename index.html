@@ -348,6 +348,17 @@
 
     .print-options select { min-height: 34px; padding: 5px 8px; }
 
+    #moreOptionsBtn { display: none; }
+
+    @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+      #moreOptionsBtn { display: inline-flex; }
+      #printButton, #pdfButton, #viewerFavoriteButton, .print-options { display: none !important; }
+      .viewer-actions.extras-open #printButton { display: inline-flex !important; }
+      .viewer-actions.extras-open #pdfButton { display: inline-flex !important; }
+      .viewer-actions.extras-open #viewerFavoriteButton { display: inline-grid !important; }
+      .viewer-actions.extras-open .print-options { display: flex !important; }
+    }
+
     .editor-modal {
       position: fixed;
       inset: 0;
@@ -957,6 +968,7 @@
         <button id="editButton" type="button" disabled>✏️ Bewerken</button>
         <button class="icon-button" id="viewerFavoriteButton" type="button" disabled title="Favoriet">&#9825;</button>
         <button class="danger" id="clearButton" type="button" disabled>🗑️ Wissen</button>
+        <button class="secondary" id="moreOptionsBtn" type="button" title="Meer opties">⋯</button>
         <div class="print-options">
           <label>
             A4
@@ -2778,6 +2790,12 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     shareButton.addEventListener('click', () => { if (!cropStage.hidden) openSharePrint(); });
     clearButton.addEventListener('click', () => { if (confirm('Kleurplaat wissen?')) clearSelection(); });
+    document.getElementById('moreOptionsBtn').addEventListener('click', function() {
+      const actions = this.closest('.viewer-actions');
+      const open = actions.classList.toggle('extras-open');
+      this.textContent = open ? '✕' : '⋯';
+      this.title = open ? 'Sluiten' : 'Meer opties';
+    });
     editButton.addEventListener('click', () => openEditor());
     favoritesViewButton.addEventListener('click', () => {
       showingFavorites = !showingFavorites;
