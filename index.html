@@ -731,13 +731,16 @@
       align-items: center;
     }
     .suggestions-bar:not([hidden]) { display: flex; }
-    .suggestions-bar.categories-mode {
+    .categories-scroll {
+      display: flex;
       flex-wrap: nowrap;
       overflow-x: auto;
+      flex-basis: 100%;
+      gap: 6px;
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
-    .suggestions-bar.categories-mode::-webkit-scrollbar { display: none; }
+    .categories-scroll::-webkit-scrollbar { display: none; }
     .suggestion-category-btn {
       background: #fff; border: 1.5px solid #c0b0e0; border-radius: 20px;
       padding: 6px 14px; font-size: 14px; font-family: inherit;
@@ -748,7 +751,7 @@
     .suggestion-category-btn:hover { background: #ebe0ff; border-color: #7c55c8; }
     @media (max-width: 600px) {
       .cat-name { display: none; }
-      .suggestion-category-btn { font-size: 20px; padding: 5px 10px; }
+      .suggestion-category-btn { font-size: 16px; padding: 4px 8px; }
     }
     .suggestion-back-btn {
       background: none; border: 1px solid #d0c0e8; border-radius: 12px;
@@ -2478,7 +2481,6 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     function renderSuggestions() {
       const q = queryInput.value.trim().toLowerCase();
       suggestionsBar.innerHTML = '';
-      suggestionsBar.classList.remove('categories-mode');
       if (q) {
         const list = [...new Set(getAllSuggestionTerms().filter(s => s.toLowerCase().startsWith(q)))];
         suggestionsBar.hidden = !list.length;
@@ -2513,25 +2515,29 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
           }
         }
       } else {
-        suggestionsBar.classList.add('categories-mode');
         const hasCats = suggestions.categorieen && suggestions.categorieen.length > 0;
         const history = loadSearchHistory();
         suggestionsBar.hidden = !hasCats && !history.length;
-        suggestions.categorieen.forEach(cat => {
-          const btn = document.createElement('button');
-          btn.type = 'button'; btn.className = 'suggestion-category-btn';
-          const icon = document.createElement('span');
-          icon.className = 'cat-icon'; icon.textContent = cat.icoon;
-          const name = document.createElement('span');
-          name.className = 'cat-name'; name.textContent = cat.naam;
-          btn.appendChild(icon); btn.appendChild(name);
-          btn.addEventListener('pointerdown', e => {
-            e.preventDefault();
-            activeSuggestionCategory = cat.naam;
-            renderSuggestions();
+        if (hasCats) {
+          const scroll = document.createElement('div');
+          scroll.className = 'categories-scroll';
+          suggestions.categorieen.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.className = 'suggestion-category-btn';
+            const icon = document.createElement('span');
+            icon.className = 'cat-icon'; icon.textContent = cat.icoon;
+            const name = document.createElement('span');
+            name.className = 'cat-name'; name.textContent = cat.naam;
+            btn.appendChild(icon); btn.appendChild(name);
+            btn.addEventListener('pointerdown', e => {
+              e.preventDefault();
+              activeSuggestionCategory = cat.naam;
+              renderSuggestions();
+            });
+            scroll.appendChild(btn);
           });
-          suggestionsBar.appendChild(btn);
-        });
+          suggestionsBar.appendChild(scroll);
+        }
         if (history.length) {
           if (hasCats) {
             const sep = document.createElement('div');
