@@ -352,11 +352,14 @@
 
     @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
       #moreOptionsBtn { display: inline-flex; }
-      #printButton, #pdfButton, #viewerFavoriteButton, .print-options { display: none !important; }
+      #printButton, #pdfButton, #viewerFavoriteButton, .print-options, #sourceLink { display: none !important; }
       .viewer-actions.extras-open #printButton { display: inline-flex !important; }
       .viewer-actions.extras-open #pdfButton { display: inline-flex !important; }
       .viewer-actions.extras-open #viewerFavoriteButton { display: inline-grid !important; }
       .viewer-actions.extras-open .print-options { display: flex !important; }
+      .viewer-actions { padding: 6px 8px; gap: 5px; }
+      .viewer-actions button:not(.icon-button) { padding: 5px 9px; min-height: 32px; font-size: 13px; }
+      .viewer-actions .icon-button { width: 32px; height: 32px; min-width: 32px; font-size: 16px; }
     }
 
     .editor-modal {
