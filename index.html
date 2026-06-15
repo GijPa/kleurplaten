@@ -152,6 +152,7 @@
 
     button.secondary { background: #5f6d7a; }
     button.green { background: #2e7d32; }
+    button.danger { background: #c0392b; }
     button.favorite-active { background: #c73962; }
 
     .icon-button {
@@ -952,10 +953,10 @@
       <div class="viewer-actions">
         <button class="green" id="printButton" type="button" disabled>🖨️ Printen</button>
         <button id="pdfButton" type="button" disabled>📄 PDF</button>
-        <button id="shareButton" type="button" disabled>📤 Print PDF</button>
+        <button id="shareButton" type="button" disabled>🖨️ Print PDF</button>
         <button id="editButton" type="button" disabled>✏️ Bewerken</button>
         <button class="icon-button" id="viewerFavoriteButton" type="button" disabled title="Favoriet">&#9825;</button>
-        <button class="secondary" id="clearButton" type="button" disabled>🗑️ Wissen</button>
+        <button class="danger" id="clearButton" type="button" disabled>🗑️ Wissen</button>
         <div class="print-options">
           <label>
             A4
@@ -2775,7 +2776,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     }
 
     shareButton.addEventListener('click', () => { if (!cropStage.hidden) openSharePrint(); });
-    clearButton.addEventListener('click', () => clearSelection());
+    clearButton.addEventListener('click', () => { if (confirm('Kleurplaat wissen?')) clearSelection(); });
     editButton.addEventListener('click', () => openEditor());
     favoritesViewButton.addEventListener('click', () => {
       showingFavorites = !showingFavorites;
