@@ -750,6 +750,7 @@
       #searchButton .btn-label, #favoritesViewButton .btn-label { display: none; }
       #searchButton, #favoritesViewButton { min-width: 44px; width: 44px; padding: 0; font-size: 18px; justify-content: center; }
       .parent-settings { grid-column: 1 / -1; }
+      label:has(.advanced-setting) { grid-column: 1 / -1; }
       main { grid-template-columns: 1fr; height: auto; overflow: visible; }
       .results-panel { height: 58vh; min-height: 360px; border-bottom: 2px solid #c6d2df; }
       .viewer-panel { border-left: 0; border-top: 2px solid #c6d2df; height: 72vh; min-height: 560px; }
@@ -2516,7 +2517,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       updatePrintPreview();
     }
     function applySettings() {
-      const hide = kidModeToggle.checked && !advancedToggle.checked;
+      const hide = !advancedToggle.checked;
       [providerInput.closest('label'), countInput.closest('label')].forEach(el => {
         if (el) el.classList.toggle('hidden', hide);
       });
