@@ -316,9 +316,9 @@
       grid-template-rows: auto 1fr;
     }
 
-    /* Print PDF knop alleen zichtbaar op mobiel/tablet */
+    /* Print PDF knop alleen zichtbaar op touchapparaten (tablet/telefoon), niet op laptop/desktop */
     #shareButton { display: none; }
-    @media (max-width: 900px) { #shareButton { display: inline-flex; } }
+    @media (hover: none) and (pointer: coarse) { #shareButton { display: inline-flex; } }
 
     .viewer-actions {
       background: #fff;
