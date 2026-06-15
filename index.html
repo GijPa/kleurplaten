@@ -847,7 +847,7 @@
           Kindvriendelijke modus
         </label>
         <label class="check-label">
-          <input id="safeFilterToggle" type="checkbox" checked>
+          <input id="safeFilterToggle" type="checkbox">
           Extra veilig filter
         </label>
         <label class="check-label">
@@ -1419,6 +1419,23 @@
           updateQueryClearBtn();
           renderSuggestions();
           return;
+        }
+      }
+      if (safeFilterToggle.checked) {
+        const terms = getAllSuggestionTerms();
+        if (terms.length > 0) {
+          const q = query.toLowerCase();
+          const allowed = terms.some(t => {
+            const tl = t.toLowerCase();
+            return q === tl || q.startsWith(tl + ' ') || tl.startsWith(q);
+          });
+          if (!allowed) {
+            showMessage('Probeer een van de suggesties! Klik op een categorie voor ideeën.', 'error');
+            queryInput.value = '';
+            updateQueryClearBtn();
+            renderSuggestions();
+            return;
+          }
         }
       }
 
@@ -2498,7 +2515,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         if (!raw) return;
         const s = JSON.parse(raw);
         kidModeToggle.checked = s.kidMode !== false;
-        safeFilterToggle.checked = s.safeFilter !== false;
+        safeFilterToggle.checked = Boolean(s.safeFilter);
         advancedToggle.checked = Boolean(s.showAdvanced);
         if (s.defaultCount) { parentDefaultCount.value = String(s.defaultCount); countInput.value = String(s.defaultCount); }
         if (s.printOrientation) printOrientation.value = s.printOrientation;
