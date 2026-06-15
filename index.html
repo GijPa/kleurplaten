@@ -2356,7 +2356,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     function updateFavoritesButton() {
       const count = Object.keys(favorites).length;
       favoritesViewButton.querySelector('.btn-label').textContent =
-        showingFavorites ? 'Terug naar zoeken' : `Favorieten (${count})`;
+        showingFavorites ? ' Terug naar zoeken' : ` Favorieten (${count})`;
       favoritesViewButton.querySelector('.btn-icon').textContent =
         showingFavorites ? '✕' : '♡';
       favoritesViewButton.classList.toggle('favorite-active', showingFavorites);
