@@ -2558,7 +2558,20 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     // ===== EVENT LISTENERS =====
     form.addEventListener('submit', e => { e.preventDefault(); search(); });
-    queryInput.addEventListener('input', () => { updateQueryClearBtn(); renderSuggestions(); });
+    function applyInlineCompletion() {
+      const typed = queryInput.value;
+      if (!typed) return;
+      const lower = typed.toLowerCase();
+      const match = getAllSuggestionTerms().find(s => s.toLowerCase().startsWith(lower) && s.length > typed.length);
+      if (!match) return;
+      queryInput.value = typed + match.slice(typed.length);
+      queryInput.setSelectionRange(typed.length, queryInput.value.length);
+    }
+    queryInput.addEventListener('input', e => {
+      updateQueryClearBtn();
+      renderSuggestions();
+      if (!e.inputType || !e.inputType.startsWith('delete')) applyInlineCompletion();
+    });
     queryClearBtn.addEventListener('click', () => {
       queryInput.value = '';
       queryClearBtn.hidden = true;

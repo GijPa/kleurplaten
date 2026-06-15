@@ -14,7 +14,7 @@
       "naam": "Vervoer",
       "icoon": "🚗",
       "termen": [
-        "auto", "trein", "vliegtuig", "boot", "raket", "fiets",
+        "auto", "sportauto", "cars", "trein", "vliegtuig", "boot", "raket", "fiets",
         "tractor", "bus", "helikopter", "motor", "brandweerauto", "politieauto"
       ]
     },
@@ -22,7 +22,7 @@
       "naam": "Helden & Sprookjes",
       "icoon": "👸",
       "termen": [
-        "spiderman", "batman", "superman", "prinses", "prins", "ridder", "fee", "eenhoorn", "draak",
+        "spiderman", "batman", "superman", "marvel", "disney", "pokemon", "pikachu", "prinses", "prins", "ridder", "fee", "eenhoorn", "draak",
         "zeemeermin", "superheld", "tovenaar", "heks", "robot", "piraat", "sneeuwman"
       ]
     },
