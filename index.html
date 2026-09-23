@@ -1152,6 +1152,28 @@
         if (!SEARCH_ALIASES.has(key)) SEARCH_ALIASES.set(key, alternatives);
       }
     }
+    // Categories are umbrella searches over their subjects, not literal image titles.
+    const CATEGORY_ALIASES = new Map();
+    const CATEGORY_SUBJECTS = new Map();
+    for (const category of window.COLORING_CATALOG?.categories || []) {
+      const name = searchWords(category.naam).join(' ');
+      const translations = SEARCH_ALIASES.get(name) || [name];
+      const categoryNames = new Set([name, ...translations]);
+      for (const [alias, values] of SEARCH_ALIASES) {
+        if (values.length === translations.length && values.every((value, i) => value === translations[i])) categoryNames.add(alias);
+      }
+      const memberGroups = category.termen.map(term => {
+        const normalized = searchWords(term).join(' ');
+        return [...(SEARCH_ALIASES.get(normalized) || []), normalized];
+      });
+      CATEGORY_SUBJECTS.set(name, memberGroups);
+      const subjects = memberGroups.flat();
+      const alternatives = [...new Set([...translations, name, ...subjects].map(value => searchWords(value).join(' ')))];
+      for (const alias of categoryNames) {
+        SEARCH_ALIASES.set(alias, alternatives);
+        CATEGORY_ALIASES.set(alias, name);
+      }
+    }
     const queryConceptCache = new Map();
     const resultTextCache = new WeakMap();
     const shardWordsCache = new WeakMap();
@@ -1178,7 +1200,9 @@
         i += length;
         if (ignored.has(phrase)) continue;
         const alternatives = SEARCH_ALIASES.get(phrase) || [];
-        groups.push([...new Set([...alternatives, phrase].map(value => searchWords(value).join(' ')))]);
+        const group = [...new Set([...alternatives, phrase].map(value => searchWords(value).join(' ')))];
+        group.category = CATEGORY_ALIASES.get(phrase) || null;
+        groups.push(group);
       }
       cacheValue(queryConceptCache, key, groups, 100);
       return groups;
@@ -1220,11 +1244,11 @@
       const concepts = queryConcepts(query);
       // Some translations have unrelated meanings: falling is not autumn,
       // and the periodic table/table tennis are not furniture.
-      if (concepts.some(group => group.includes('autumn')) &&
+      if (concepts.some(group => !group.category && group.includes('autumn')) &&
           !/\b(autumn|herfst|season|seasons|seasonal|leaf|leaves|acorn|acorns|pumpkin|pumpkins|harvest|thanksgiving|october|november|september)\b/.test(text) &&
           !/\bfall (tree|trees|forest|scene|landscape|coloring|colouring)\b/.test(text) &&
           !(/\bfall\b/.test(text) && /\b(tree|trees|forest)\b/.test(text))) return false;
-      if (concepts.some(group => group.includes('table')) &&
+      if (concepts.some(group => !group.category && group.includes('table')) &&
           /\b(table tennis|periodic table|multiplication table|times table|table salt|table lamp|table saw)\b/.test(text)) return false;
       return concepts.length > 0 && concepts.every(group => group.some(phrase => matchesPhrase(text, phrase)));
     }
@@ -1246,7 +1270,24 @@
         if (item.width && item.height) value++;
         scores.set(item, value);
       }
-      return [...results].sort((a, b) => scores.get(b) - scores.get(a) || String(a.id).localeCompare(String(b.id), 'nl', { numeric: true }));
+      const sorted = [...results].sort((a, b) => scores.get(b) - scores.get(a) || String(a.id).localeCompare(String(b.id), 'nl', { numeric: true }));
+      const category = concepts.find(group => group.category)?.category;
+      const members = CATEGORY_SUBJECTS.get(category);
+      if (!members) return sorted;
+      // Mix the category's subjects so animals does not start with 100 ants.
+      const buckets = new Map();
+      for (const result of sorted) {
+        const title = ' ' + searchWords(result.title || '').join(' ') + ' ';
+        let member = members.findIndex(group => group.some(phrase => matchesPhrase(title, phrase)));
+        if (member < 0) member = members.findIndex(group => group.some(phrase => matchesPhrase(resultText(result), phrase)));
+        if (!buckets.has(member)) buckets.set(member, []);
+        buckets.get(member).push(result);
+      }
+      const mixed = [];
+      for (let i = 0; mixed.length < sorted.length; i++) {
+        for (const bucket of buckets.values()) if (i < bucket.length) mixed.push(bucket[i]);
+      }
+      return mixed;
     }
 
     function dedupeResults(results) {
@@ -1373,6 +1414,16 @@
       });
       const priority = shard => concepts.reduce((score, group) => score + (group.some(phrase => shard.subjects.includes(phrase)) ? 1 : 0), 0);
       shards.sort((a, b) => priority(b) - priority(a));
+      const members = CATEGORY_SUBJECTS.get(concepts.find(group => group.category)?.category);
+      if (members) {
+        const preferred = new Set();
+        for (const group of members) {
+          const shard = shards.find(item => !preferred.has(item) && group.some(phrase => item.subjects.includes(phrase)));
+          if (shard) preferred.add(shard);
+        }
+        const order = new Map([...preferred].map((shard, index) => [shard, index]));
+        shards.sort((a, b) => (order.get(a) ?? Infinity) - (order.get(b) ?? Infinity));
+      }
       const results = [];
       let next = 0, failures = 0;
       const worker = async () => {
@@ -1671,7 +1722,7 @@
     let pencilColor = '#000000';
     let favorites = loadFavorites();
     let showingFavorites = false;
-    let suggestions = { categorieen: [] };
+    let suggestions = { categorieen: window.COLORING_CATALOG?.categories || [] };
     let activeSuggestionCategory = null;
     async function loadSuggestions() {
       try {
@@ -1680,7 +1731,7 @@
       } catch { /* fetch niet beschikbaar (bijv. lokaal zonder server) */ }
     }
     function getAllSuggestionTerms() {
-      return suggestions.categorieen.flatMap(c => c.termen);
+      return suggestions.categorieen.flatMap(c => [c.naam, ...c.termen]);
     }
 
     async function search() {
@@ -2766,6 +2817,9 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         suggestionsBar.appendChild(back);
         const cat = suggestions.categorieen.find(c => c.naam === activeSuggestionCategory);
         if (cat) {
+          const all = makeTermChip(cat.naam);
+          all.textContent = `Alles in ${cat.naam}`;
+          suggestionsBar.appendChild(all);
           const termen = cat.termen;
           const visible = termen.slice(0, CHIPS_INITIAL);
           const rest = termen.slice(CHIPS_INITIAL);

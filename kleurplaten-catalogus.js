@@ -456,6 +456,14 @@ window.COLORING_CATALOG = {
     "diamant": [
       "diamond"
     ],
+    "dier": [
+      "animal",
+      "animals"
+    ],
+    "dieren": [
+      "animal",
+      "animals"
+    ],
     "dierenarts": [
       "veterinarian"
     ],
@@ -597,7 +605,8 @@ window.COLORING_CATALOG = {
       "pea"
     ],
     "eten": [
-      "food"
+      "food",
+      "foods"
     ],
     "europa": [
       "europe"
@@ -612,7 +621,14 @@ window.COLORING_CATALOG = {
       "fairy"
     ],
     "feest": [
-      "party"
+      "party",
+      "celebration",
+      "celebrations"
+    ],
+    "feesten": [
+      "party",
+      "celebration",
+      "celebrations"
     ],
     "feesthoed": [
       "party hat"
@@ -818,6 +834,18 @@ window.COLORING_CATALOG = {
     ],
     "heks": [
       "witch"
+    ],
+    "held": [
+      "hero",
+      "heroes",
+      "superhero",
+      "superheroes"
+    ],
+    "helden": [
+      "hero",
+      "heroes",
+      "superhero",
+      "superheroes"
     ],
     "helikopter": [
       "helicopter"
@@ -1439,6 +1467,9 @@ window.COLORING_CATALOG = {
     ],
     "naruto": [
       "naruto"
+    ],
+    "natuur": [
+      "nature"
     ],
     "nederland": [
       "netherlands"
@@ -2063,8 +2094,16 @@ window.COLORING_CATALOG = {
     "spook": [
       "ghost"
     ],
+    "sport": [
+      "sport",
+      "sports"
+    ],
     "sportauto": [
       "sports car"
+    ],
+    "sporten": [
+      "sport",
+      "sports"
     ],
     "springtouw": [
       "jump rope"
@@ -2073,7 +2112,12 @@ window.COLORING_CATALOG = {
       "grasshopper"
     ],
     "sprookje": [
-      "fairy tale"
+      "fairy tale",
+      "fairy tales"
+    ],
+    "sprookjes": [
+      "fairy tale",
+      "fairy tales"
     ],
     "sprookjesbos": [
       "fairy forest"
@@ -2394,6 +2438,12 @@ window.COLORING_CATALOG = {
     "verrekijker": [
       "binoculars"
     ],
+    "vervoer": [
+      "transport",
+      "transportation",
+      "vehicle",
+      "vehicles"
+    ],
     "veter": [
       "shoelace"
     ],
@@ -2438,6 +2488,26 @@ window.COLORING_CATALOG = {
     ],
     "vlinders": [
       "butterfly"
+    ],
+    "voeding": [
+      "food",
+      "foods"
+    ],
+    "voedsel": [
+      "food",
+      "foods"
+    ],
+    "voertuig": [
+      "transport",
+      "transportation",
+      "vehicle",
+      "vehicles"
+    ],
+    "voertuigen": [
+      "transport",
+      "transportation",
+      "vehicle",
+      "vehicles"
     ],
     "voet": [
       "foot"
@@ -2710,6 +2780,380 @@ window.COLORING_CATALOG = {
       "boar"
     ]
   },
+  "categories": [
+    {
+      "naam": "Dieren",
+      "icoon": "🐾",
+      "termen": [
+        "hond",
+        "kat",
+        "paard",
+        "konijn",
+        "beer",
+        "leeuw",
+        "tijger",
+        "olifant",
+        "giraffe",
+        "aap",
+        "dolfijn",
+        "haai",
+        "vogel",
+        "kikker",
+        "krokodil",
+        "zebra",
+        "schaap",
+        "eend",
+        "uil",
+        "vos",
+        "wolf",
+        "muis",
+        "pinguin",
+        "dinosaurus",
+        "t-rex",
+        "kameel",
+        "flamingo",
+        "gorilla",
+        "krab",
+        "octopus",
+        "schildpad",
+        "panda",
+        "koala",
+        "kangoeroe",
+        "neushoorn",
+        "nijlpaard",
+        "cheetah",
+        "struisvogel",
+        "papegaai",
+        "kolibrie",
+        "pelikaan",
+        "walrus",
+        "zeehond",
+        "ijsbeer",
+        "hamster",
+        "cavia",
+        "lama",
+        "alpaca",
+        "hert",
+        "egel",
+        "wasbeer",
+        "kip",
+        "haan",
+        "gans",
+        "kalkoen",
+        "clownvis",
+        "kameleon",
+        "slak",
+        "lieveheersbeestje",
+        "mier"
+      ]
+    },
+    {
+      "naam": "Vervoer",
+      "icoon": "🚗",
+      "termen": [
+        "auto",
+        "sportauto",
+        "cars",
+        "trein",
+        "vliegtuig",
+        "boot",
+        "raket",
+        "fiets",
+        "tractor",
+        "bus",
+        "helikopter",
+        "motor",
+        "brandweerauto",
+        "politieauto",
+        "ambulance",
+        "vrachtwagen",
+        "graafmachine",
+        "kraan",
+        "bulldozer",
+        "vuilniswagen",
+        "schoolbus",
+        "taxi",
+        "raceauto",
+        "quad",
+        "brommer",
+        "step",
+        "zeilboot",
+        "speedboot",
+        "onderzeeër",
+        "luchtballon",
+        "ruimteschip",
+        "tram",
+        "stoomtrein",
+        "paardenkoets",
+        "slee"
+      ]
+    },
+    {
+      "naam": "Helden",
+      "icoon": "🦸",
+      "termen": [
+        "spiderman",
+        "batman",
+        "superman",
+        "hulk",
+        "ironman",
+        "thor",
+        "captain america",
+        "wonder woman",
+        "flash",
+        "avengers",
+        "sonic",
+        "mario",
+        "luigi",
+        "pikachu",
+        "pokemon",
+        "naruto",
+        "goku",
+        "dragon ball",
+        "paw patrol",
+        "ninjago",
+        "transformers",
+        "spongebob",
+        "minions",
+        "scooby doo",
+        "superheld",
+        "ninja",
+        "black panther",
+        "captain marvel",
+        "aquaman",
+        "wolverine",
+        "bluey",
+        "peppa pig",
+        "pj masks",
+        "miraculous",
+        "elsa",
+        "anna",
+        "rapunzel",
+        "moana",
+        "buzz lightyear",
+        "woody",
+        "mcqueen",
+        "kirby",
+        "donkey kong",
+        "yoshi",
+        "pac man",
+        "superheld meisje",
+        "ridder",
+        "detective"
+      ]
+    },
+    {
+      "naam": "Sprookjes",
+      "icoon": "👸",
+      "termen": [
+        "prinses",
+        "prins",
+        "ridder",
+        "fee",
+        "eenhoorn",
+        "draak",
+        "trol",
+        "dwerg",
+        "kabouter",
+        "elf",
+        "zeemeermin",
+        "tovenaar",
+        "heks",
+        "robot",
+        "piraat",
+        "sneeuwman",
+        "assepoester",
+        "doornroosje",
+        "sneeuwwitje",
+        "belle",
+        "ariel",
+        "jasmine",
+        "peter pan",
+        "roodkapje",
+        "pinokkio",
+        "alice in wonderland",
+        "tinkerbell",
+        "sprookjesbos",
+        "toverstaf",
+        "magisch kasteel"
+      ]
+    },
+    {
+      "naam": "Feest",
+      "icoon": "🎉",
+      "termen": [
+        "verjaardag",
+        "gefeliciteerd",
+        "jarig",
+        "taart",
+        "ballon",
+        "cadeau",
+        "kerst",
+        "kerstboom",
+        "pasen",
+        "halloween",
+        "sinterklaas",
+        "kerstman",
+        "kerstbal",
+        "rendier",
+        "sneeuwpop",
+        "paasei",
+        "paashaas",
+        "zwarte piet",
+        "pakjesavond",
+        "pepernoot",
+        "vuurwerk",
+        "nieuwjaar",
+        "confetti",
+        "slingers",
+        "feesthoed",
+        "verkleedkleding",
+        "masker",
+        "carnaval"
+      ]
+    },
+    {
+      "naam": "Natuur",
+      "icoon": "🌿",
+      "termen": [
+        "boom",
+        "bloem",
+        "vlinder",
+        "bij",
+        "regenboog",
+        "zon",
+        "maan",
+        "ster",
+        "wolk",
+        "paddenstoel",
+        "sneeuwvlok",
+        "sneeuw",
+        "zeester",
+        "zomer",
+        "herfst",
+        "winter",
+        "lente",
+        "roos",
+        "tulp",
+        "zonnebloem",
+        "madeliefje",
+        "paardenbloem",
+        "kersenbloesem",
+        "cactus",
+        "appelboom",
+        "palmboom",
+        "dennenboom",
+        "waterval",
+        "rivier",
+        "meer",
+        "strand",
+        "berg",
+        "vulkaan",
+        "jungle",
+        "bos",
+        "koraalrif",
+        "ijsberg",
+        "woestijn",
+        "zonsondergang",
+        "sterrenhemel",
+        "aurora",
+        "onweer",
+        "regenboog"
+      ]
+    },
+    {
+      "naam": "Eten",
+      "icoon": "🍎",
+      "termen": [
+        "appel",
+        "banaan",
+        "aardbei",
+        "watermeloen",
+        "druiven",
+        "ananas",
+        "mango",
+        "kiwi",
+        "peer",
+        "kers",
+        "sinaasappel",
+        "citroen",
+        "taart",
+        "koekje",
+        "donut",
+        "ijs",
+        "snoep",
+        "chocolade",
+        "lolly",
+        "cupcake",
+        "wafel",
+        "pannenkoek",
+        "stroopwafel",
+        "pizza",
+        "hamburger",
+        "friet",
+        "sandwich",
+        "brood",
+        "croissant",
+        "spaghetti",
+        "soep",
+        "salade",
+        "wortel",
+        "broccoli",
+        "maïs",
+        "tomaat",
+        "pompoen",
+        "melk",
+        "kaas",
+        "ei",
+        "cake",
+        "speculaas"
+      ]
+    },
+    {
+      "naam": "Sport",
+      "icoon": "⚽",
+      "termen": [
+        "voetbal",
+        "tennis",
+        "basketbal",
+        "volleybal",
+        "honkbal",
+        "handbal",
+        "zwemmen",
+        "duiken",
+        "surfen",
+        "ballet",
+        "dans",
+        "gymnastiek",
+        "turnen",
+        "yoga",
+        "fietsen",
+        "wielrennen",
+        "schaatsen",
+        "ijshockey",
+        "skiën",
+        "snowboarden",
+        "hardlopen",
+        "atletiek",
+        "paardrijden",
+        "boogschieten",
+        "klimmen",
+        "karate",
+        "judo",
+        "taekwondo",
+        "golf",
+        "bowling",
+        "badminton",
+        "tafeltennis",
+        "zwembad",
+        "stadion",
+        "speeltuin",
+        "trofee",
+        "medaille",
+        "olympische spelen"
+      ]
+    }
+  ],
   "coverage": {
     "acorn": 89,
     "advent": 38,
