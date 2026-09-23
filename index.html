@@ -903,8 +903,8 @@
     <label>
       Bron
       <select id="provider" class="advanced-setting">
-        <option value="ddgs">Internet afbeeldingen</option>
-        <option value="all" selected>Internet + Commons + Openverse</option>
+        <option value="all" selected>Kleurplaten (alle bronnen)</option>
+        <option value="catalog">Kleurplatencatalogus</option>
         <option value="commons">Wikimedia Commons</option>
         <option value="openverse">Openverse</option>
       </select>
@@ -1084,10 +1084,9 @@
     </div>
   </div>
 
+  <script src="kleurplaten-catalogus.js"></script>
   <script>
     // ===== PROXY & CONFIG =====
-    const PROXY_BASE = 'https://corsproxy.io/?';
-    const proxyUrl = url => PROXY_BASE + encodeURIComponent(url);
     // wsrv.nl is a dedicated image proxy — used only for editor/PDF canvas operations (needs CORS)
     const imageProxyUrl = url => `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
     const FETCH_TIMEOUT = 25000;
@@ -1124,47 +1123,130 @@
       piraat:'pirate',piraten:'pirates',heks:'witch',tovenaar:'wizard',
       sprookje:'fairy tale',engel:'angel',tuin:'garden',strand:'beach',
       basketbal:'basketball',tennis:'tennis',lente:'spring',zomer:'summer',herfst:'autumn',winter:'winter',
+      taart:'cake',taarten:'cakes',verjaardagstaart:'birthday cake',verjaardag:'birthday',jarig:'birthday',
+      cadeau:'gift',cadeautje:'gift',slingers:'bunting',feest:'party',kerstman:'santa claus',
+      sneeuwpop:'snowman',paasei:'easter egg',paashaas:'easter bunny',rendier:'reindeer',
+      appel:'apple',banaan:'banana',aardbei:'strawberry',watermeloen:'watermelon',druiven:'grapes',
+      ananas:'pineapple',peer:'pear',kers:'cherry',sinaasappel:'orange',citroen:'lemon',
+      koekje:'cookie',ijs:'ice cream',snoep:'candy',chocolade:'chocolate',lolly:'lollipop',
+      wafel:'waffle',pannenkoek:'pancake',friet:'fries',brood:'bread',soep:'soup',
+      wortel:'carrot',tomaat:'tomato',pompoen:'pumpkin',melk:'milk',kaas:'cheese',ei:'egg',
+      boot:'boat',fiets:'bicycle',brandweerauto:'fire truck',politieauto:'police car',
+      vrachtwagen:'truck',graafmachine:'excavator',raceauto:'race car',helikopter:'helicopter',
+      bij:'bee',egel:'hedgehog',zeehond:'seal',hert:'deer',lieveheersbeestje:'ladybug',
+      meisje:'girl',jongen:'boy',kleine:'small',grote:'big',met:'with',
     };
 
-    function translateQuery(q) {
-      return q.split(' ').map(w => TRANSLATIONS[w] || w).join(' ');
+    const SEARCH_ALIASES = new Map();
+    for (const [term, translation] of Object.entries(TRANSLATIONS)) {
+      SEARCH_ALIASES.set(searchWords(term).join(' '), [translation]);
+    }
+    for (const [term, alternatives] of Object.entries(window.COLORING_CATALOG?.aliases || {})) {
+      const key = searchWords(term).join(' ');
+      SEARCH_ALIASES.set(key, alternatives);
+    }
+    // English synonyms work too (e.g. fall and autumn), not just Dutch translations.
+    for (const alternatives of Object.values(window.COLORING_CATALOG?.aliases || {})) {
+      for (const alternative of alternatives) {
+        const key = searchWords(alternative).join(' ');
+        if (!SEARCH_ALIASES.has(key)) SEARCH_ALIASES.set(key, alternatives);
+      }
+    }
+    const queryConceptCache = new Map();
+    const resultTextCache = new WeakMap();
+    const shardWordsCache = new WeakMap();
+    const catalogLoads = new Map();
+
+    function searchWords(text) {
+      return String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .match(/[a-z0-9]+/g) || [];
     }
 
-    function buildSearchQueries(query) {
-      const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
-      const trans = translateQuery(norm);
-      const seen = new Set();
-      const out = [];
-      const add = q => { if (!seen.has(q)) { seen.add(q); out.push(q); } };
-      const hasTag = s => s.includes('kleurplaat') || s.includes('coloring');
-      if (!hasTag(norm)) {
-        add(`${norm} kleurplaat`);
-        add(`${norm} kleurplaten`);
-        if (trans !== norm) {
-          add(`${trans} coloring page`);
-          add(`${trans} coloring pages`);
+    function queryConcepts(query) {
+      const key = searchWords(searchSubject(query)).join(' ');
+      if (queryConceptCache.has(key)) return queryConceptCache.get(key);
+      const words = key.split(' ').filter(Boolean);
+      const ignored = new Set(['de', 'het', 'een', 'en', 'met', 'the', 'a', 'and', 'with', 'voor', 'for', 'van', 'of']);
+      const groups = [];
+      for (let i = 0; i < words.length;) {
+        let length = Math.min(5, words.length - i), phrase;
+        for (; length > 1; length--) {
+          phrase = words.slice(i, i + length).join(' ');
+          if (SEARCH_ALIASES.has(phrase)) break;
         }
-      } else {
-        add(norm);
-        if (trans !== norm) add(trans);
+        phrase = words.slice(i, i + length).join(' ');
+        i += length;
+        if (ignored.has(phrase)) continue;
+        const alternatives = SEARCH_ALIASES.get(phrase) || [];
+        groups.push([...new Set([...alternatives, phrase].map(value => searchWords(value).join(' ')))]);
       }
-      return out;
+      cacheValue(queryConceptCache, key, groups, 100);
+      return groups;
+    }
+
+    function translateQuery(q) {
+      return queryConcepts(q).map(group => group[0]).join(' ');
+    }
+
+    function wordForms(word) {
+      const forms = [word, word + 's', word + 'es', word + 'en'];
+      if (word.endsWith('s') && !word.endsWith('ss')) forms.push(word.slice(0, -1));
+      if (word.endsWith('ies')) forms.push(word.slice(0, -3) + 'y');
+      if (word.endsWith('y')) forms.push(word.slice(0, -1) + 'ies');
+      return forms;
+    }
+
+    function matchesPhrase(text, phrase) {
+      const words = phrase.split(' ');
+      const last = words.pop();
+      const prefix = words.length ? words.join(' ') + ' ' : '';
+      return wordForms(last).some(form => text.includes(' ' + prefix + form + ' '));
+    }
+
+    function resultText(result) {
+      if (resultTextCache.has(result)) return resultTextCache.get(result);
+      // Source labels describe the actual illustration, never the query that retrieved it.
+      const paths = [result.source, result.image].map(url => {
+        try { return decodeURIComponent(new URL(url).pathname); } catch { return ''; }
+      });
+      const text = ' ' + searchWords([result.title || '', ...paths, ...(result.keywords || [])].join(' ')).join(' ') + ' ';
+      resultTextCache.set(result, text);
+      return text;
+    }
+
+    function isRelevantColoringPage(query, result) {
+      const text = resultText(result);
+      if (!/\b(kleurplaat|kleurplaten|coloring|colouring|ausmalbild|ausmalbilder|coloriage)\b/.test(text)) return false;
+      const concepts = queryConcepts(query);
+      // Some translations have unrelated meanings: falling is not autumn,
+      // and the periodic table/table tennis are not furniture.
+      if (concepts.some(group => group.includes('autumn')) &&
+          !/\b(autumn|herfst|season|seasons|seasonal|leaf|leaves|acorn|acorns|pumpkin|pumpkins|harvest|thanksgiving|october|november|september)\b/.test(text) &&
+          !/\bfall (tree|trees|forest|scene|landscape|coloring|colouring)\b/.test(text) &&
+          !(/\bfall\b/.test(text) && /\b(tree|trees|forest)\b/.test(text))) return false;
+      if (concepts.some(group => group.includes('table')) &&
+          /\b(table tennis|periodic table|multiplication table|times table|table salt|table lamp|table saw)\b/.test(text)) return false;
+      return concepts.length > 0 && concepts.every(group => group.some(phrase => matchesPhrase(text, phrase)));
     }
 
     function rankResults(query, results) {
-      const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
-      const trans = translateQuery(norm);
-      const wanted = new Set([...norm.split(' '), ...trans.split(' ')].filter(w => w.length > 2));
-      const helpful = new Set(['coloring','page','kleurplaat','kleurplaten','line','art','outline','drawing','printable']);
-      return [...results].sort((a, b) => score(b) - score(a));
-      function score(item) {
-        const text = `${item.title || ''} ${item.source || ''}`.toLowerCase();
-        let v = 0;
-        for (const w of wanted) if (text.includes(w)) v += 5;
-        for (const w of helpful) if (text.includes(w)) v += 2;
-        if (item.width && item.height) v += 1;
-        return v;
+      const concepts = queryConcepts(query);
+      const scores = new Map();
+      for (const item of results) {
+        const title = ' ' + searchWords(item.title || '').join(' ') + ' ';
+        const text = resultText(item);
+        let value = item.provider === 'SuperColoring' ? 4 : 0;
+        for (const group of concepts) {
+          if (group.some(phrase => matchesPhrase(title, phrase))) value += 12;
+          else if (group.some(phrase => matchesPhrase(text, phrase))) value += 3;
+          if (group.includes(searchWords(searchSubject(item.title || '')).join(' '))) value += 8;
+        }
+        if (/\b(simple|easy|cute|cartoon|eenvoudig)\b/.test(title)) value += 3;
+        if (/\b(zentangle|intricate|advanced)\b/.test(title)) value -= 3;
+        if (item.width && item.height) value++;
+        scores.set(item, value);
       }
+      return [...results].sort((a, b) => scores.get(b) - scores.get(a) || String(a.id).localeCompare(String(b.id), 'nl', { numeric: true }));
     }
 
     function dedupeResults(results) {
@@ -1174,28 +1256,6 @@
         if (!key || seen.has(key)) return false;
         seen.add(key); return true;
       });
-    }
-
-    function interleaveByProvider(results) {
-      const groups = new Map();
-      const order = [];
-      for (const r of results) {
-        const p = r.provider || 'Onbekend';
-        if (!groups.has(p)) { groups.set(p, []); order.push(p); }
-        groups.get(p).push(r);
-      }
-      const out = [];
-      let i = 0;
-      while (true) {
-        let added = false;
-        for (const p of order) {
-          const g = groups.get(p);
-          if (i < g.length) { out.push(g[i]); added = true; }
-        }
-        if (!added) break;
-        i++;
-      }
-      return out;
     }
 
     function normalizeResult({ provider, id, title, imageUrl, thumbUrl, sourceUrl, license, width, height }) {
@@ -1225,18 +1285,36 @@
     }
 
     function isChildSafe(result) {
-      const text = `${result.title||''} ${result.source||''} ${result.provider||''}`.toLowerCase();
-      return !BLOCKED_WORDS.some(w => text.includes(w));
+      const text = `${resultText(result)} ${result.provider||''}`.toLowerCase();
+      const words = new Set(searchWords(text));
+      return ![...BLOCKED_WORDS, 'cocktail', 'cocktails', 'tattoo', 'pinup'].some(w => words.has(w));
     }
 
     // ===== FETCH HELPERS =====
+    let searchController = null;
+    const SEARCH_TIMEOUT = 9000;
+    const searchCache = new Map();
+    const thumbnailCache = new Map();
+    function cacheValue(cache, key, value, limit = 500) {
+      if (cache.size >= limit) cache.delete(cache.keys().next().value);
+      cache.set(key, value);
+    }
+
     async function timedFetch(url, opts = {}) {
+      const { signal, timeout = FETCH_TIMEOUT, ...rest } = opts;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
+      const abort = () => ctrl.abort();
+      if (signal?.aborted) ctrl.abort();
+      else signal?.addEventListener('abort', abort, { once: true });
+      const tid = setTimeout(abort, timeout);
       try {
-        return await fetch(url, { ...opts, signal: ctrl.signal });
+        const response = await fetch(url, { ...rest, signal: ctrl.signal });
+        // Read the body within the deadline as well (fetch only waits for headers).
+        const blob = await response.blob();
+        return new Response(blob, { status: response.status, statusText: response.statusText, headers: response.headers });
       } finally {
         clearTimeout(tid);
+        signal?.removeEventListener('abort', abort);
       }
     }
 
@@ -1246,55 +1324,73 @@
       return r.json();
     }
 
-    // ===== SEARCH: DUCKDUCKGO =====
-    async function searchDdgs(query, count) {
-      const queries = buildSearchQueries(query);
-      const allResults = [];
-
-      for (const q of queries.slice(0, 2)) {
-        try {
-          const items = await fetchDdgsImages(q, count);
-          allResults.push(...items);
-          if (dedupeResults(allResults).length >= count) break;
-        } catch (e) {
-          // try next query
-        }
+    function loadCatalogPart(file, signal) {
+      if (!/^catalogus\/[a-f0-9]{16}\.js$/.test(file)) return Promise.reject(new Error('Ongeldig catalogusbestand'));
+      if (signal?.aborted) return Promise.reject(new Error('Zoeken afgebroken'));
+      if (Array.isArray(window.COLORING_CATALOG_PARTS?.[file])) return Promise.resolve(window.COLORING_CATALOG_PARTS[file]);
+      if (!catalogLoads.has(file)) {
+        const pending = new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          const timer = setTimeout(() => finish(new Error('Catalogus laden duurde te lang')), SEARCH_TIMEOUT);
+          const finish = error => {
+            clearTimeout(timer);
+            script.remove();
+            if (error) reject(error);
+            else resolve(window.COLORING_CATALOG_PARTS[file]);
+          };
+          script.onload = () => finish(Array.isArray(window.COLORING_CATALOG_PARTS?.[file]) ? null : new Error('Catalogusdeel ontbreekt'));
+          script.onerror = () => finish(new Error('Catalogusdeel kon niet worden geladen'));
+          script.src = file;
+          document.head.appendChild(script);
+        });
+        catalogLoads.set(file, pending);
+        pending.catch(() => catalogLoads.delete(file));
       }
-
-      const results = rankResults(query, dedupeResults(allResults));
-      if (!results.length) throw new Error('DuckDuckGo gaf geen resultaten. Probeer het opnieuw of kies een andere bron.');
-      return results.slice(0, count);
+      return new Promise((resolve, reject) => {
+        const abort = () => { cleanup(); reject(new Error('Zoeken afgebroken')); };
+        const cleanup = () => signal?.removeEventListener('abort', abort);
+        if (signal?.aborted) { abort(); return; }
+        signal?.addEventListener('abort', abort, { once: true });
+        catalogLoads.get(file).then(value => { cleanup(); resolve(value); }, error => { cleanup(); reject(error); });
+      });
     }
 
-    async function fetchDdgsImages(searchTerm, count) {
-      // Step 1: get vqd token
-      const initUrl = `https://duckduckgo.com/?q=${encodeURIComponent(searchTerm)}&iax=images&ia=images`;
-      const initResp = await timedFetch(proxyUrl(initUrl));
-      if (!initResp.ok) throw new Error(`DuckDuckGo init ${initResp.status}`);
-      const initHtml = await initResp.text();
-      const vqdMatch = initHtml.match(/vqd=['"]?([^'"&\s]+)/);
-      if (!vqdMatch) throw new Error('DuckDuckGo token niet gevonden');
-      const vqd = vqdMatch[1];
-
-      // Step 2: get images
-      const params = new URLSearchParams({ l:'nl-nl', o:'json', q:searchTerm, vqd, f:',,,', p:'1' });
-      const imgUrl = `https://duckduckgo.com/i.js?${params}`;
-      const data = await fetchJson(proxyUrl(imgUrl));
-
-      return (data.results || [])
-        .filter(item => item.image)
-        .slice(0, count)
-        .map((item, idx) => normalizeResult({
-          provider: 'Internet afbeeldingen',
-          id: `ddg:${idx}:${item.image}`,
-          title: item.title || searchTerm,
-          imageUrl: item.image,
-          thumbUrl: item.thumbnail || item.image,
-          sourceUrl: item.url || item.image,
-          license: 'Zoekresultaat',
-          width: item.width,
-          height: item.height,
-        }));
+    async function searchCatalog(query, count, options = {}) {
+      const catalog = window.COLORING_CATALOG;
+      if (!catalog) throw new Error('Kleurplatencatalogus kon niet worden geladen.');
+      // Compatibility with an older, single-file catalogue.
+      if (catalog.results) {
+        const results = rankResults(query, catalog.results.filter(r => isRelevantColoringPage(query, r))).slice(0, count);
+        options.onBatch?.(results);
+        return results;
+      }
+      const concepts = queryConcepts(query);
+      if (!concepts.length) return [];
+      const shards = (catalog.shards || []).filter(shard => {
+        if (!shardWordsCache.has(shard)) shardWordsCache.set(shard, new Set(shard.words));
+        const words = shardWordsCache.get(shard);
+        return concepts.every(group => group.some(phrase => phrase.split(' ').every(word => wordForms(word).some(form => words.has(form)))));
+      });
+      const priority = shard => concepts.reduce((score, group) => score + (group.some(phrase => shard.subjects.includes(phrase)) ? 1 : 0), 0);
+      shards.sort((a, b) => priority(b) - priority(a));
+      const results = [];
+      let next = 0, failures = 0;
+      const worker = async () => {
+        while (next < shards.length && results.length < count && !options.signal?.aborted) {
+          const shard = shards[next++];
+          try {
+            const items = await loadCatalogPart(shard.file, options.signal);
+            if (options.signal?.aborted) return;
+            const batch = rankResults(query, items.filter(item => isRelevantColoringPage(query, item)));
+            results.push(...batch);
+            // Let thumbnail checks catch up before downloading more catalogue parts.
+            await options.onBatch?.(batch);
+          } catch (error) { if (!options.signal?.aborted) failures++; }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(3, shards.length) }, worker));
+      if (failures) throw new Error('Een deel van de catalogus kon niet worden geladen.');
+      return rankResults(query, results).slice(0, count);
     }
 
     // ===== SEARCH: WIKIMEDIA COMMONS =====
@@ -1305,20 +1401,22 @@
       return stripped || norm;
     }
 
-    async function searchCommons(query, count) {
+    async function searchCommons(query, count, options = {}) {
       const norm = searchSubject(query);
       const trans = translateQuery(norm);
-      const terms = [`${trans} "coloring page"`, `${norm} kleurplaat`, `${trans} coloring`, `${trans} "line art"`];
+      const terms = [...new Set([`${trans} "coloring"`, `${norm} kleurplaat`])];
       const allResults = [];
 
-      for (const term of terms) {
+      let failures = 0;
+      await Promise.all(terms.map(async term => {
+        const batch = [];
         try {
           const params = new URLSearchParams({
             action:'query', format:'json', generator:'search',
             gsrnamespace:'6', gsrsearch:term, gsrlimit:String(Math.min(count,50)),
             prop:'imageinfo', iiprop:'url|mime|size|extmetadata', iiurlwidth:'330', origin:'*',
           });
-          const data = await fetchJson(`https://commons.wikimedia.org/w/api.php?${params}`);
+          const data = await fetchJson(`https://commons.wikimedia.org/w/api.php?${params}`, { signal: options.signal, timeout: SEARCH_TIMEOUT });
           const pages = (data.query || {}).pages || {};
           for (const page of Object.values(pages)) {
             const info = (page.imageinfo || [])[0];
@@ -1331,7 +1429,7 @@
             const shortUrl = (meta.Descriptionshorturl || {}).value;
             const title = page.title || '';
             const sourceUrl = shortUrl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(title.replace(/ /g,'_'))}`;
-            allResults.push(normalizeResult({
+            batch.push(normalizeResult({
               provider: 'Wikimedia Commons',
               id: `commons:${page.pageid}`,
               title: title.replace(/^File:/,''),
@@ -1343,53 +1441,57 @@
               height: info.height,
             }));
           }
-          if (dedupeResults(allResults).length >= count) break;
-        } catch (e) { /* try next */ }
-      }
+          allResults.push(...batch);
+          options.onBatch?.(batch);
+        } catch (e) { failures++; }
+      }));
 
       const results = rankResults(query, dedupeResults(allResults));
-      if (!results.length) throw new Error('Wikimedia Commons gaf geen resultaten.');
+      if (!results.length && failures === terms.length) throw new Error('Wikimedia Commons is tijdelijk niet bereikbaar.');
       return results.slice(0, count);
     }
 
     // ===== SEARCH: OPENVERSE =====
-    async function searchOpenverse(query, count) {
+    async function searchOpenverse(query, count, options = {}) {
       const norm = searchSubject(query);
       const trans = translateQuery(norm);
       // Openverse allows at most 20 results per request and a limited number of requests without an API key.
       const PAGE_SIZE = 20, MAX_REQUESTS = 6;
-      const searchTerms = [`${trans} + "coloring page"`, `${trans} + "line art"`, `${trans} + "coloring book"`];
+      const searchTerms = [`${trans} "coloring"`];
       let results = [];
       let requests = 0;
       let lastError = null;
 
       outer: for (const searchTerm of searchTerms) {
-        for (let page = 1; page <= 2; page++) {
-          if (requests >= MAX_REQUESTS || dedupeResults(results).length >= count) break outer;
+        for (let page = 1; page <= MAX_REQUESTS; page++) {
+          if (requests >= MAX_REQUESTS) break outer;
+          if (options.signal?.aborted) break outer;
           requests++;
           let data;
           try {
             const params = new URLSearchParams({ q:searchTerm, page_size:String(PAGE_SIZE), page:String(page), mature:'false' });
-            data = await fetchJson(`https://api.openverse.org/v1/images/?${params}`);
+            data = await fetchJson(`https://api.openverse.org/v1/images/?${params}`, { signal: options.signal, timeout: SEARCH_TIMEOUT });
           } catch (e) { lastError = e; break; }
           const items = data.results || [];
-          results.push(...items
+          const batch = items
             .filter(item => item.url || item.thumbnail)
             .map((item, idx) => normalizeResult({
               provider: 'Openverse',
               id: `openverse:${item.id || idx}`,
-              title: item.title || searchTerm,
+              title: item.title || '',
               imageUrl: item.url || item.thumbnail,
               thumbUrl: item.thumbnail || item.url,
               sourceUrl: item.foreign_landing_url || item.url,
               license: [item.license, item.license_version].filter(Boolean).join(' '),
               width: item.width,
               height: item.height,
-            })));
-          if (items.length < PAGE_SIZE) break;
+            }));
+          results.push(...batch);
+          options.onBatch?.(batch);
+          if (items.length < PAGE_SIZE || page >= data.page_count) break;
         }
       }
-      if (!results.length) throw lastError || new Error('Openverse gaf geen resultaten.');
+      if (!results.length && lastError) throw lastError;
       return rankResults(query, dedupeResults(results)).slice(0, count);
     }
 
@@ -1397,7 +1499,7 @@
     // A coloring page is mostly white with thin dark lines and almost no color.
     // Thresholds were tuned on Openverse thumbnails analysed at 64px.
     const ANALYZE_SIZE = 64;
-    const ANALYZE_TIMEOUT = 12000;
+    const ANALYZE_TIMEOUT = 4500;
     const ANALYZE_CONCURRENCY = 8;
 
     function looksLikeColoringPage({ white, dark, colored }) {
@@ -1405,15 +1507,19 @@
       return white >= 0.55 && colored <= 0.06 && ink >= 0.03 && ink <= 0.45 && dark <= 0.35;
     }
 
-    function analyzeThumbnail(url) {
+    function analyzeThumbnail(url, signal) {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.referrerPolicy = 'no-referrer';
-        const tid = setTimeout(() => { img.src = ''; reject(new Error('timeout')); }, ANALYZE_TIMEOUT);
-        img.onerror = () => { clearTimeout(tid); reject(new Error('load')); };
+        const cleanup = () => { clearTimeout(tid); signal?.removeEventListener('abort', abort); };
+        const abort = () => { cleanup(); img.onload = img.onerror = null; img.src = ''; reject(new Error('aborted')); };
+        const tid = setTimeout(abort, ANALYZE_TIMEOUT);
+        if (signal?.aborted) { abort(); return; }
+        signal?.addEventListener('abort', abort, { once: true });
+        img.onerror = () => { cleanup(); reject(new Error('load')); };
         img.onload = () => {
-          clearTimeout(tid);
+          cleanup();
           try {
             const scale = Math.min(1, ANALYZE_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
             const w = Math.max(1, Math.round(img.naturalWidth * scale));
@@ -1442,30 +1548,23 @@
       });
     }
 
-    // Keeps results whose thumbnail looks like a coloring page. Results that could not be
-    // analysed (e.g. no CORS) are kept but placed after the confirmed ones.
-    async function filterColoringPages(results, isCancelled, onProgress) {
-      const verdicts = new Array(results.length);
-      let next = 0, done = 0;
-      const worker = async () => {
-        while (next < results.length && !isCancelled()) {
-          const i = next++;
-          try {
-            verdicts[i] = looksLikeColoringPage(await analyzeThumbnail(results[i].thumbnail)) ? 'yes' : 'no';
-          } catch {
-            verdicts[i] = 'unknown';
-          }
-          onProgress(++done, results.length);
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(ANALYZE_CONCURRENCY, results.length) }, worker));
-      return [
-        ...results.filter((_, i) => verdicts[i] === 'yes'),
-        ...results.filter((_, i) => verdicts[i] === 'unknown'),
-      ];
+    // Unknown/unreadable images are never silently approved.
+    async function checkColoringPage(result, signal) {
+      const key = normalizeUrl(result.thumbnail);
+      if (thumbnailCache.has(key)) return thumbnailCache.get(key);
+      const proxy = imageProxyUrl(result.thumbnail) + '&w=160&h=160&fit=inside&output=png';
+      for (const url of [result.thumbnail, proxy]) {
+        if (signal.aborted) return false;
+        try {
+          const verdict = looksLikeColoringPage(await analyzeThumbnail(url, signal));
+          cacheValue(thumbnailCache, key, verdict);
+          return verdict;
+        } catch { /* Retry through the existing CORS image proxy. */ }
+      }
+      return false;
     }
 
-    // ===== MAIN SEARCH =====
+    // ===== DOM =====
     const form = document.getElementById('searchForm');
     const queryInput = document.getElementById('query');
     const queryClearBtn = document.getElementById('queryClearBtn');
@@ -1585,6 +1684,8 @@
     }
 
     async function search() {
+      searchController?.abort();
+      searchButton.disabled = false;
       const searchId = ++activeSearchId;
       const query = queryInput.value.trim();
       const provider = kidModeToggle.checked ? 'all' : providerInput.value;
@@ -1594,7 +1695,7 @@
       if (!query) { showMessage('Vul eerst een zoekterm in.','error'); return; }
       if (kidModeToggle.checked) {
         const q = query.toLowerCase();
-        if (BLOCKED_QUERIES.some(w => q.includes(w))) {
+        if (BLOCKED_QUERIES.some(w => w === '18+' ? q.includes(w) : searchWords(q).includes(w))) {
           showMessage('Deze zoekterm is niet beschikbaar. Probeer iets anders!', 'error');
           queryInput.value = '';
           updateQueryClearBtn();
@@ -1625,66 +1726,96 @@
       searchButton.disabled = true;
       clearGrid();
       clearSelection();
+      currentResults = [];
       showMessage('Zoeken...','hint');
       setStatus('Online zoeken naar kleurplaten...');
 
-      try {
-        let results = [];
-        const errors = [];
-
-        // Fetch extra candidates because the coloring page check rejects part of them.
-        const candidateCount = count * 2;
-        const run = async (fn, name) => {
-          try { results.push(...await fn(query, candidateCount)); }
-          catch (e) { errors.push(`${name}: ${e.message}`); }
-        };
-
-        if (provider === 'all') {
-          await Promise.all([
-            run(searchDdgs, 'DuckDuckGo'),
-            run(searchCommons, 'Commons'),
-            run(searchOpenverse, 'Openverse'),
-          ]);
-          results = interleaveByProvider(rankResults(query, dedupeResults(results)));
-        } else if (provider === 'ddgs') {
-          await run(searchDdgs, 'DuckDuckGo');
-        } else if (provider === 'commons') {
-          await run(searchCommons, 'Commons');
-        } else if (provider === 'openverse') {
-          await run(searchOpenverse, 'Openverse');
-        }
-
-        if (searchId !== activeSearchId) return;
-
-        if (safeFilterToggle.checked) results = results.filter(isChildSafe);
-        results = dedupeResults(results);
-
-        if (results.length) {
-          setStatus(`Kleurplaten controleren (0/${results.length})...`);
-          results = await filterColoringPages(
-            results,
-            () => searchId !== activeSearchId,
-            (done, total) => { if (searchId === activeSearchId) setStatus(`Kleurplaten controleren (${done}/${total})...`); },
-          );
-          if (searchId !== activeSearchId) return;
-          results = results.slice(0, count);
-        }
-
-        if (errors.length && !results.length) {
-          showMessage(errors.join(' | '), 'error');
-          setStatus('Zoeken mislukt.');
-          return;
-        }
-        if (errors.length) setStatus(`Resultaten geladen (${errors.join('; ')})`);
-
-        currentResults = results;
-        if (currentResults.length) addToSearchHistory(query);
+      const controller = new AbortController();
+      searchController = controller;
+      const { signal } = controller;
+      const cacheKey = JSON.stringify([searchSubject(query), provider, count, kidModeToggle.checked, safeFilterToggle.checked]);
+      const cached = searchCache.get(cacheKey);
+      if (cached && Date.now() - cached.time < 10 * 60 * 1000) {
+        currentResults = cached.results;
         renderResults(currentResults);
+        addToSearchHistory(query);
+        searchButton.disabled = false;
+        return;
+      }
+
+      const approved = [], queue = [], seen = new Set(), workers = new Set(), errors = [];
+      let checked = 0, renderTimer = null;
+      const isCurrent = () => searchId === activeSearchId && !showingFavorites;
+      const publish = () => {
+        renderTimer = null;
+        if (!isCurrent()) return;
+        currentResults = rankResults(query, approved).slice(0, count);
+        if (currentResults.length) renderResults(currentResults);
+        setStatus(`${currentResults.length} kleurplaten gevonden; zoeken en controleren...`);
+      };
+      const schedulePublish = () => {
+        if (renderTimer === null) renderTimer = setTimeout(publish, 150);
+      };
+      const startWorkers = () => {
+        while (workers.size < ANALYZE_CONCURRENCY && queue.length && !signal.aborted) {
+          const worker = (async () => {
+            while (queue.length && !signal.aborted) {
+              const result = queue.shift();
+              const accepted = await checkColoringPage(result, signal);
+              if (!isCurrent() || signal.aborted) return;
+              checked++;
+              if (accepted) { approved.push(result); schedulePublish(); }
+              if (approved.length >= count) { controller.abort(); return; }
+            }
+          })();
+          workers.add(worker);
+          worker.finally(() => workers.delete(worker));
+        }
+      };
+      const onBatch = items => {
+        if (!isCurrent() || signal.aborted) return;
+        for (const result of rankResults(query, items)) {
+          const key = normalizeUrl(result.image);
+          if (seen.has(key) || !isRelevantColoringPage(query, result)) continue;
+          if ((kidModeToggle.checked || safeFilterToggle.checked) && !isChildSafe(result)) continue;
+          if (result.width && result.height && Math.min(result.width, result.height) < 200) continue;
+          seen.add(key);
+          queue.push(result);
+        }
+        startWorkers();
+        return Promise.all([...workers]);
+      };
+      const run = async (fn, name) => {
+        try { await fn(query, Math.min(count * 2, 200), { signal, onBatch }); }
+        catch (e) { if (!signal.aborted) errors.push(name); }
+      };
+      // One deadline covers all providers and thumbnail checks together.
+      const deadline = setTimeout(() => controller.abort(), 25000);
+      try {
+        await Promise.all([
+          ...(provider === 'all' || provider === 'catalog' ? [run(searchCatalog, 'Catalogus')] : []),
+          ...(provider === 'all' || provider === 'commons' ? [run(searchCommons, 'Commons')] : []),
+          ...(provider === 'all' || provider === 'openverse' ? [run(searchOpenverse, 'Openverse')] : []),
+        ]);
+        await Promise.all([...workers]);
+        if (!isCurrent()) return;
+        currentResults = rankResults(query, approved).slice(0, count);
+        renderResults(currentResults);
+        if (currentResults.length) {
+          addToSearchHistory(query);
+          if (!errors.length && (!signal.aborted || approved.length >= count)) cacheValue(searchCache, cacheKey, { time: Date.now(), results: currentResults }, 20);
+          setStatus(`${currentResults.length} kleurplaten gevonden.` + (errors.length ? ' Sommige bronnen zijn tijdelijk niet bereikbaar.' : '') + (signal.aborted && approved.length < count ? ' Zoektijd verstreken; probeer opnieuw voor meer.' : ''));
+        } else {
+          showMessage(errors.length || signal.aborted
+            ? 'Zoeken kon niet volledig worden afgerond. Probeer het opnieuw.'
+            : 'Geen passende kleurplaten gevonden die we konden controleren. Probeer een andere zoekterm.', 'empty');
+          setStatus(`${checked} afbeeldingen gecontroleerd; geen passende kleurplaten.`);
+        }
       } catch (e) {
-        if (searchId !== activeSearchId) return;
-        showMessage(e.message || String(e), 'error');
-        setStatus('Zoeken mislukt.');
+        if (isCurrent()) { showMessage('Zoeken is mislukt. Probeer het opnieuw.', 'error'); setStatus('Zoeken mislukt.'); }
       } finally {
+        clearTimeout(deadline);
+        clearTimeout(renderTimer);
         if (searchId === activeSearchId) searchButton.disabled = false;
       }
     }
@@ -1719,6 +1850,7 @@
         tile.setAttribute('role','button');
         tile.tabIndex = 0;
         tile.dataset.id = result.id;
+        if (selectedResult?.id === result.id) { tile.classList.add('selected'); selectedTile = tile; }
         tile.addEventListener('click', () => selectResult(result, tile));
         tile.addEventListener('keydown', e => {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectResult(result, tile); }
@@ -2909,6 +3041,9 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     });
     editButton.addEventListener('click', () => openEditor());
     favoritesViewButton.addEventListener('click', () => {
+      searchController?.abort();
+      activeSearchId++;
+      searchButton.disabled = false;
       showingFavorites = !showingFavorites;
       updateFavoritesButton();
       if (showingFavorites) {
