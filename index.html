@@ -1706,6 +1706,7 @@
     let activeSearchId = 0;
     let currentImageUrl = '';
     let viewerBitmap = null;
+    let selectionLogoController = null;
     let crop = { top:0, right:0, bottom:0, left:0 };
     const CROP_STEP = 1;
     const CROP_MAX = 40;
@@ -1966,6 +1967,10 @@
     }
 
     function selectResult(result, tile) {
+      selectionLogoController?.abort();
+      const logoController = new AbortController();
+      selectionLogoController = logoController;
+      _sharePdfCache = null;
       if (selectedTile) selectedTile.classList.remove('selected');
       selectedTile = tile;
       selectedTile.classList.add('selected');
@@ -2003,9 +2008,64 @@
       if (window.innerWidth <= 900) {
         document.querySelector('.viewer-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+      return cleanSelectedLogo(result, logoController);
+    }
+
+    async function loadLogoImage(url, signal) {
+      if (url.startsWith('data:') || url.startsWith('blob:')) return loadImg(url);
+      // Canvas inspection requires CORS. Try the source first, then the existing proxy.
+      for (const candidate of [url, imageProxyUrl(url)]) {
+        if (signal.aborted) return null;
+        let objectUrl;
+        try {
+          const response = await timedFetch(candidate, { signal, timeout: 4000 });
+          if (!response.ok) continue;
+          objectUrl = URL.createObjectURL(await response.blob());
+          return await loadImg(objectUrl);
+        } catch { /* Keep the directly displayed image if inspection is unavailable. */ }
+        finally { if (objectUrl) URL.revokeObjectURL(objectUrl); }
+      }
+      return null;
+    }
+
+    async function cleanSelectedLogo(result, controller) {
+      const isCurrent = () => !controller.signal.aborted && selectedResult === result
+        && currentImageUrl === result.image && editorModal.hidden;
+      try {
+        const image = await loadLogoImage(result.image, controller.signal);
+        if (!image || !isCurrent()) return;
+        const width = image.naturalWidth || image.width, height = image.naturalHeight || image.height;
+        if (width * height > 36000000) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#fff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0);
+        const logo = findSuperColoringLogo(canvas);
+        if (!logo?.safe || !isCurrent()) return;
+        context.fillStyle = '#fff';
+        context.fillRect(logo.x, logo.y, logo.width, logo.height);
+        const cleanedUrl = canvas.toDataURL('image/png');
+        const cleanedImage = await loadImg(cleanedUrl);
+        if (!isCurrent()) return;
+        // All existing edit/print/export actions now use the same cleaned image.
+        currentImageUrl = cleanedUrl;
+        viewerBitmap = cleanedImage;
+        viewerImage.src = cleanedUrl;
+        renderViewerCanvas();
+        viewerInfo.textContent = attributionText(result);
+        _sharePdfCache = null;
+        setStatus('Kleurplaat geopend; logo automatisch verwijderd.');
+      } catch { /* Recognition must never prevent opening an illustration. */ }
+      finally {
+        if (selectionLogoController === controller) selectionLogoController = null;
+      }
     }
 
     function clearSelection() {
+      selectionLogoController?.abort();
+      selectionLogoController = null;
       _sharePdfCache = null;
       if (selectedTile) selectedTile.classList.remove('selected');
       selectedTile = null;
@@ -2283,6 +2343,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     // ===== EDITOR =====
     async function openEditor() {
       if (!currentImageUrl) return;
+      selectionLogoController?.abort();
+      selectionLogoController = null;
       let objUrl = null;
       try {
         setStatus('Bewerker laden...');
@@ -2313,13 +2375,9 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         editorTool = 'eraser';
         document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
         updateEditorToolButtons();
-        editorRemoveLogoButton.disabled = !canRemoveLogo(selectedResult);
-        editorRemoveLogoButton.title = editorRemoveLogoButton.disabled
-          ? 'De gebruiksrechten staan automatisch verwijderen niet aantoonbaar toe.'
-          : 'Herken een losstaand SuperColoring-logo op een witte achtergrond.';
-        editorMessage.textContent = editorRemoveLogoButton.disabled
-          ? 'Logo verwijderen is niet beschikbaar bij deze gebruiksrechten.'
-          : 'Logo verwijderen werkt voor een losstaand SuperColoring-logo in een hoek.';
+        editorRemoveLogoButton.disabled = false;
+        editorRemoveLogoButton.title = 'Herken een losstaand SuperColoring-logo op een witte achtergrond.';
+        editorMessage.textContent = 'Logo verwijderen werkt voor een losstaand SuperColoring-logo in een hoek.';
         pushEditorHistory();
         editorModal.hidden = false;
         requestAnimationFrame(() => { renderEditor(); updateEraserPreview(); });
@@ -2333,22 +2391,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     function closeEditor() { editorModal.hidden = true; }
 
-    function canRemoveLogo(result) {
-      if (!result) return false;
-      if (result.officialOriginal && result.license === 'Public domain') return true;
-      try {
-        const url = new URL(result.licenseUrl);
-        if (url.hostname === 'creativecommons.org' && url.protocol === 'https:'
-            && /^\/(?:licenses\/(?:by|by-sa|by-nc|by-nc-sa)\/(?:1\.0|2\.0|2\.5|3\.0|4\.0)\/(?:deed\.[a-z-]+)?|publicdomain\/zero\/1\.0\/)$/i.test(url.pathname)) return true;
-      } catch { /* Some search providers supply only the standard licence label. */ }
-      return /^(?:(?:cc[ -]?)?(?:by|by-sa|by-nc|by-nc-sa)[ -](?:1\.0|2\.0|2\.5|3\.0|4\.0)|cc0(?: 1\.0)?)$/i.test(result.license || '');
-    }
-
     function removeEditorLogo() {
-      if (!canRemoveLogo(selectedResult)) {
-        editorMessage.textContent = 'De gebruiksrechten staan automatisch verwijderen niet aantoonbaar toe.';
-        return;
-      }
       if (editorSourceCanvas.width * editorSourceCanvas.height > 36000000) {
         editorMessage.textContent = 'Deze afbeelding is te groot voor automatische logoherkenning.';
         return;
