@@ -903,8 +903,8 @@
     <label>
       Bron
       <select id="provider" class="advanced-setting">
-        <option value="ddgs" selected>Internet afbeeldingen</option>
-        <option value="all">Internet + Commons + Openverse</option>
+        <option value="ddgs">Internet afbeeldingen</option>
+        <option value="all" selected>Internet + Commons + Openverse</option>
         <option value="commons">Wikimedia Commons</option>
         <option value="openverse">Openverse</option>
       </select>
@@ -1298,10 +1298,17 @@
     }
 
     // ===== SEARCH: WIKIMEDIA COMMONS =====
-    async function searchCommons(query, count) {
+    // The coloring page words are added by the search terms themselves, so strip them from the subject.
+    function searchSubject(query) {
       const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
+      const stripped = norm.replace(/\b(kleurplaten|kleurplaat|colou?ring( pages?| sheets?)?)\b/g, ' ').replace(/\s+/g,' ').trim();
+      return stripped || norm;
+    }
+
+    async function searchCommons(query, count) {
+      const norm = searchSubject(query);
       const trans = translateQuery(norm);
-      const terms = [trans !== norm ? `${trans} coloring page` : null, `${norm} kleurplaat`, `${trans} line art`].filter(Boolean);
+      const terms = [`${trans} "coloring page"`, `${norm} kleurplaat`, `${trans} coloring`, `${trans} "line art"`];
       const allResults = [];
 
       for (const term of terms) {
@@ -1309,7 +1316,7 @@
           const params = new URLSearchParams({
             action:'query', format:'json', generator:'search',
             gsrnamespace:'6', gsrsearch:term, gsrlimit:String(Math.min(count,50)),
-            prop:'imageinfo', iiprop:'url|mime|size|extmetadata', iiurlwidth:'600', origin:'*',
+            prop:'imageinfo', iiprop:'url|mime|size|extmetadata', iiurlwidth:'330', origin:'*',
           });
           const data = await fetchJson(`https://commons.wikimedia.org/w/api.php?${params}`);
           const pages = (data.query || {}).pages || {};
@@ -1347,26 +1354,115 @@
 
     // ===== SEARCH: OPENVERSE =====
     async function searchOpenverse(query, count) {
-      const norm = query.toLowerCase().trim().replace(/\s+/g,' ');
+      const norm = searchSubject(query);
       const trans = translateQuery(norm);
-      const searchTerm = trans !== norm ? `${trans} coloring` : `${norm} coloring`;
-      const params = new URLSearchParams({ q:searchTerm, page_size:String(Math.min(count,50)), mature:'false' });
-      const data = await fetchJson(`https://api.openverse.org/v1/images/?${params}`);
-      const results = (data.results || [])
-        .filter(item => item.url || item.thumbnail)
-        .map((item, idx) => normalizeResult({
-          provider: 'Openverse',
-          id: `openverse:${item.id || idx}`,
-          title: item.title || searchTerm,
-          imageUrl: item.url || item.thumbnail,
-          thumbUrl: item.thumbnail || item.url,
-          sourceUrl: item.foreign_landing_url || item.url,
-          license: [item.license, item.license_version].filter(Boolean).join(' '),
-          width: item.width,
-          height: item.height,
-        }));
-      if (!results.length) throw new Error('Openverse gaf geen resultaten.');
+      // Openverse allows at most 20 results per request and a limited number of requests without an API key.
+      const PAGE_SIZE = 20, MAX_REQUESTS = 6;
+      const searchTerms = [`${trans} + "coloring page"`, `${trans} + "line art"`, `${trans} + "coloring book"`];
+      let results = [];
+      let requests = 0;
+      let lastError = null;
+
+      outer: for (const searchTerm of searchTerms) {
+        for (let page = 1; page <= 2; page++) {
+          if (requests >= MAX_REQUESTS || dedupeResults(results).length >= count) break outer;
+          requests++;
+          let data;
+          try {
+            const params = new URLSearchParams({ q:searchTerm, page_size:String(PAGE_SIZE), page:String(page), mature:'false' });
+            data = await fetchJson(`https://api.openverse.org/v1/images/?${params}`);
+          } catch (e) { lastError = e; break; }
+          const items = data.results || [];
+          results.push(...items
+            .filter(item => item.url || item.thumbnail)
+            .map((item, idx) => normalizeResult({
+              provider: 'Openverse',
+              id: `openverse:${item.id || idx}`,
+              title: item.title || searchTerm,
+              imageUrl: item.url || item.thumbnail,
+              thumbUrl: item.thumbnail || item.url,
+              sourceUrl: item.foreign_landing_url || item.url,
+              license: [item.license, item.license_version].filter(Boolean).join(' '),
+              width: item.width,
+              height: item.height,
+            })));
+          if (items.length < PAGE_SIZE) break;
+        }
+      }
+      if (!results.length) throw lastError || new Error('Openverse gaf geen resultaten.');
       return rankResults(query, dedupeResults(results)).slice(0, count);
+    }
+
+    // ===== COLORING PAGE DETECTION =====
+    // A coloring page is mostly white with thin dark lines and almost no color.
+    // Thresholds were tuned on Openverse thumbnails analysed at 64px.
+    const ANALYZE_SIZE = 64;
+    const ANALYZE_TIMEOUT = 12000;
+    const ANALYZE_CONCURRENCY = 8;
+
+    function looksLikeColoringPage({ white, dark, colored }) {
+      const ink = 1 - white;
+      return white >= 0.55 && colored <= 0.06 && ink >= 0.03 && ink <= 0.45 && dark <= 0.35;
+    }
+
+    function analyzeThumbnail(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.referrerPolicy = 'no-referrer';
+        const tid = setTimeout(() => { img.src = ''; reject(new Error('timeout')); }, ANALYZE_TIMEOUT);
+        img.onerror = () => { clearTimeout(tid); reject(new Error('load')); };
+        img.onload = () => {
+          clearTimeout(tid);
+          try {
+            const scale = Math.min(1, ANALYZE_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
+            const w = Math.max(1, Math.round(img.naturalWidth * scale));
+            const h = Math.max(1, Math.round(img.naturalHeight * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, w, h);
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, w, h);
+            const px = ctx.getImageData(0, 0, w, h).data;
+            let white = 0, dark = 0, colored = 0;
+            for (let i = 0; i < px.length; i += 4) {
+              const r = px[i], g = px[i+1], b = px[i+2];
+              const lum = 0.299*r + 0.587*g + 0.114*b;
+              if (Math.max(r, g, b) - Math.min(r, g, b) > 60) colored++;
+              if (lum > 215) white++;
+              else if (lum < 110) dark++;
+            }
+            const n = w * h;
+            resolve({ white: white/n, dark: dark/n, colored: colored/n });
+          } catch (e) { reject(e); }
+        };
+        img.src = url;
+      });
+    }
+
+    // Keeps results whose thumbnail looks like a coloring page. Results that could not be
+    // analysed (e.g. no CORS) are kept but placed after the confirmed ones.
+    async function filterColoringPages(results, isCancelled, onProgress) {
+      const verdicts = new Array(results.length);
+      let next = 0, done = 0;
+      const worker = async () => {
+        while (next < results.length && !isCancelled()) {
+          const i = next++;
+          try {
+            verdicts[i] = looksLikeColoringPage(await analyzeThumbnail(results[i].thumbnail)) ? 'yes' : 'no';
+          } catch {
+            verdicts[i] = 'unknown';
+          }
+          onProgress(++done, results.length);
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(ANALYZE_CONCURRENCY, results.length) }, worker));
+      return [
+        ...results.filter((_, i) => verdicts[i] === 'yes'),
+        ...results.filter((_, i) => verdicts[i] === 'unknown'),
+      ];
     }
 
     // ===== MAIN SEARCH =====
@@ -1491,7 +1587,7 @@
     async function search() {
       const searchId = ++activeSearchId;
       const query = queryInput.value.trim();
-      const provider = kidModeToggle.checked ? 'ddgs' : providerInput.value;
+      const provider = kidModeToggle.checked ? 'all' : providerInput.value;
       const count = kidModeToggle.checked && !advancedToggle.checked
         ? Number(parentDefaultCount.value) : Number(countInput.value);
 
@@ -1536,15 +1632,19 @@
         let results = [];
         const errors = [];
 
+        // Fetch extra candidates because the coloring page check rejects part of them.
+        const candidateCount = count * 2;
         const run = async (fn, name) => {
-          try { results.push(...await fn(query, count)); }
+          try { results.push(...await fn(query, candidateCount)); }
           catch (e) { errors.push(`${name}: ${e.message}`); }
         };
 
         if (provider === 'all') {
-          await run(searchDdgs, 'DuckDuckGo');
-          await run(searchCommons, 'Commons');
-          await run(searchOpenverse, 'Openverse');
+          await Promise.all([
+            run(searchDdgs, 'DuckDuckGo'),
+            run(searchCommons, 'Commons'),
+            run(searchOpenverse, 'Openverse'),
+          ]);
           results = interleaveByProvider(rankResults(query, dedupeResults(results)));
         } else if (provider === 'ddgs') {
           await run(searchDdgs, 'DuckDuckGo');
@@ -1558,6 +1658,17 @@
 
         if (safeFilterToggle.checked) results = results.filter(isChildSafe);
         results = dedupeResults(results);
+
+        if (results.length) {
+          setStatus(`Kleurplaten controleren (0/${results.length})...`);
+          results = await filterColoringPages(
+            results,
+            () => searchId !== activeSearchId,
+            (done, total) => { if (searchId === activeSearchId) setStatus(`Kleurplaten controleren (${done}/${total})...`); },
+          );
+          if (searchId !== activeSearchId) return;
+          results = results.slice(0, count);
+        }
 
         if (errors.length && !results.length) {
           showMessage(errors.join(' | '), 'error');
@@ -2648,7 +2759,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       [providerInput.closest('label'), countInput.closest('label')].forEach(el => {
         if (el) el.classList.toggle('hidden', hide);
       });
-      if (hide) { providerInput.value = 'ddgs'; countInput.value = parentDefaultCount.value; }
+      if (hide) { providerInput.value = 'all'; countInput.value = parentDefaultCount.value; }
       updateFavoritesButton();
     }
     function updatePrintPreview() {
