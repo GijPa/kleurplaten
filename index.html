@@ -1742,7 +1742,7 @@
       searchButton.disabled = false;
       const searchId = ++activeSearchId;
       const query = queryInput.value.trim();
-      const provider = kidModeToggle.checked ? 'all' : providerInput.value;
+      const provider = providerInput.value;
       const count = kidModeToggle.checked && !advancedToggle.checked
         ? Number(parentDefaultCount.value) : Number(countInput.value);
 
@@ -1942,7 +1942,8 @@
         titleEl.textContent = result.title;
         const sourceEl = document.createElement('div');
         sourceEl.className = 'source';
-        sourceEl.textContent = result.license ? `${result.provider} - ${result.license}` : result.provider;
+        sourceEl.textContent = [result.author || result.provider, result.license].filter(Boolean).join(' - ');
+        sourceEl.title = attributionText(result);
         meta.append(titleEl, sourceEl);
         tile.append(thumb, meta);
         frag.appendChild(tile);
@@ -1977,11 +1978,7 @@
       viewerImage.alt = result.title;
       viewerImage.referrerPolicy = 'no-referrer';
 
-      viewerInfo.textContent = [
-        result.title, result.provider,
-        result.license ? `Licentie: ${result.license}` : '',
-        result.width && result.height ? `${result.width} x ${result.height}px` : '',
-      ].filter(Boolean).join(' | ');
+      viewerInfo.textContent = attributionText(result);
 
       sourceLink.href = result.source || result.image;
       sourceLink.hidden = false;
@@ -2089,6 +2086,50 @@
     }
 
     // ===== PRINT =====
+    function attributionText(result = selectedResult) {
+      if (!result) return '';
+      const edited = result === selectedResult && (currentImageUrl !== result.image || Object.values(crop).some(Boolean));
+      return [result.title, result.author || result.provider, result.credit, result.creditUrl,
+        result.license, result.licenseUrl, result.source,
+        edited ? 'Bewerkt in Kleurplaten zoeken. Bewerking aangeboden onder dezelfde licentie.' : '',
+      ].filter(Boolean).join(' | ');
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
+    }
+
+    function attributedCanvas(image, attribution) {
+      // Draw credits outside the illustration, including in downloaded/shared PDFs.
+      const sw = image.naturalWidth || image.width, sh = image.naturalHeight || image.height;
+      const scale = Math.min(1, 3200 / Math.max(sw, sh));
+      const width = Math.max(1, Math.round(sw * scale));
+      const height = Math.max(1, Math.round(sh * scale));
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const fontSize = Math.max(8, Math.round(width / 85));
+      const inset = fontSize, lineHeight = Math.ceil(fontSize * 1.4);
+      ctx.font = `${fontSize}px sans-serif`;
+      const lines = [];
+      let line = '';
+      // Character wrapping also fits long source URLs without truncating them.
+      for (const char of attribution) {
+        if (ctx.measureText(line + char).width > width - inset * 2) { lines.push(line); line = ''; }
+        line += char;
+      }
+      if (line) lines.push(line);
+      canvas.width = width;
+      canvas.height = height + (lines.length ? lines.length * lineHeight + inset * 2 : 0);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, width, height);
+      ctx.fillStyle = '#444';
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textBaseline = 'top';
+      lines.forEach((text, index) => ctx.fillText(text, inset, height + inset + index * lineHeight));
+      return canvas;
+    }
+
     function preparePrintImage() {
       if (!viewerBitmap) return null;
       try {
@@ -2110,19 +2151,20 @@
       }
     }
 
-    function openPrintWindow(imageUrl) {
+    function openPrintWindow(imageUrl, attribution = attributionText()) {
       const landscape = printOrientation.value === 'landscape';
       const marginMap = { normal:'10mm', small:'5mm', none:'0' };
       const pageSize = landscape ? 'A4 landscape' : 'A4 portrait';
       const pageMargin = marginMap[printMargin.value] || '10mm';
       const win = window.open('', '_blank', 'width=900,height=900');
-      if (!win) { window.print(); return; }
+      if (!win) { setStatus('Sta pop-ups toe om de kleurplaat met bronvermelding te printen.'); return; }
       win.document.open();
       win.document.write(`<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Kleurplaat printen</title>
 <style>@page{size:${pageSize};margin:0}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#fff}
-body{display:grid;place-items:center;overflow:hidden;padding:${pageMargin}}
-img{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}</style></head>
-<body><img id="pi" src="${imageUrl}" alt="Kleurplaat">
+body{display:grid;grid-template-rows:minmax(0,1fr) auto;overflow:hidden;padding:${pageMargin}}
+img{display:block;min-height:0;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
+footer{font:8pt sans-serif;color:#444;overflow-wrap:anywhere;padding:2mm}</style></head>
+<body><img id="pi" src="${escapeHtml(imageUrl)}" alt="Kleurplaat"><footer>${escapeHtml(attribution)}</footer>
 <script>const i=document.getElementById('pi');window.addEventListener('afterprint',()=>setTimeout(()=>window.close(),250));
 i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},150));<\/script></body></html>`);
       win.document.close();
@@ -2130,23 +2172,25 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     // ===== PDF =====
     async function openPrintPdf() {
+      const attribution = attributionText();
+      const imageUrl = currentImageUrl;
       const dataUrl = preparePrintImage();
       if (dataUrl) {
         try {
-          const pdfBytes = buildPdf(dataUrl, printOrientation.value, printMargin.value);
+          const pdfBytes = await buildPdf(dataUrl, printOrientation.value, printMargin.value, attribution);
           downloadPdfBytes(pdfBytes);
           setStatus('PDF klaar om te openen of opslaan.');
         } catch (e) {
           setStatus('PDF mislukt, printvenster geopend.');
-          openPrintWindow(dataUrl);
+          openPrintWindow(dataUrl, attribution);
         }
       } else {
         // Canvas tainted — reload via image proxy for CORS
-        if (!currentImageUrl) return;
+        if (!imageUrl) return;
         setStatus('PDF laden...');
         try {
-          const src = currentImageUrl.startsWith('data:') ? currentImageUrl : imageProxyUrl(currentImageUrl);
-          const img = await loadImg(src, !currentImageUrl.startsWith('data:'));
+          const src = imageUrl.startsWith('data:') ? imageUrl : imageProxyUrl(imageUrl);
+          const img = await loadImg(src, !imageUrl.startsWith('data:'));
           const canvas = document.createElement('canvas');
           canvas.width = img.naturalWidth || img.width;
           canvas.height = img.naturalHeight || img.height;
@@ -2154,12 +2198,12 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
           ctx.fillStyle = '#fff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0);
-          const pdfBytes = buildPdf(canvas.toDataURL('image/png'), printOrientation.value, printMargin.value);
+          const pdfBytes = await buildPdf(canvas.toDataURL('image/png'), printOrientation.value, printMargin.value, attribution);
           downloadPdfBytes(pdfBytes);
           setStatus('PDF klaar.');
         } catch (e) {
           setStatus(`PDF niet beschikbaar: ${e.message}. Gebruik Printen en sla op als PDF.`);
-          if (currentImageUrl) openPrintWindow(currentImageUrl);
+          if (imageUrl) openPrintWindow(imageUrl, attribution);
         }
       }
     }
@@ -2176,21 +2220,10 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
     }
 
-    function buildPdf(pngDataUrl, orientation, margin) {
+    async function buildPdf(pngDataUrl, orientation, margin, attribution = attributionText()) {
       // Convert PNG data URL to a canvas, then JPEG bytes for DCTDecode embedding
-      const tmp = document.createElement('canvas');
-      const imgEl = new Image();
-      imgEl.src = pngDataUrl;
-      const sw = imgEl.naturalWidth || imgEl.width || 800;
-      const sh = imgEl.naturalHeight || imgEl.height || 600;
-      const maxSide = 3200;
-      const sc = Math.min(1, maxSide / Math.max(sw, sh));
-      tmp.width = Math.max(1, Math.round(sw * sc));
-      tmp.height = Math.max(1, Math.round(sh * sc));
-      const tctx = tmp.getContext('2d');
-      tctx.fillStyle = '#fff';
-      tctx.fillRect(0, 0, tmp.width, tmp.height);
-      tctx.drawImage(imgEl, 0, 0, tmp.width, tmp.height);
+      const imgEl = await loadImg(pngDataUrl, false);
+      const tmp = attributedCanvas(imgEl, attribution);
 
       const jpegB64 = tmp.toDataURL('image/jpeg', 0.92).split(',')[1];
       const jpegBytes = Uint8Array.from(atob(jpegB64), c => c.charCodeAt(0));
@@ -3028,13 +3061,15 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
 
     async function openSharePrint() {
       if (!currentImageUrl || cropStage.hidden) return;
+      const imageUrl = currentImageUrl;
+      const attribution = attributionText();
       setStatus('Bezig met voorbereiden...');
       shareButton.disabled = true;
       try {
         let pngDataUrl;
 
-        if (currentImageUrl.startsWith('data:')) {
-          const img = await loadImg(currentImageUrl);
+        if (imageUrl.startsWith('data:')) {
+          const img = await loadImg(imageUrl);
           const c = document.createElement('canvas');
           c.width = img.naturalWidth || 800; c.height = img.naturalHeight || 600;
           const cx = c.getContext('2d');
@@ -3042,7 +3077,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
           cx.drawImage(img, 0, 0);
           pngDataUrl = c.toDataURL('image/png');
         } else {
-          const resp = await timedFetch(imageProxyUrl(currentImageUrl));
+          const resp = await timedFetch(imageProxyUrl(imageUrl));
           if (!resp.ok) throw new Error(`Afbeelding laden mislukt (HTTP ${resp.status})`);
           const blob = await resp.blob();
           const objUrl = URL.createObjectURL(blob);
@@ -3062,7 +3097,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
           }
         }
 
-        const pdfBytes = buildPdf(pngDataUrl, printOrientation.value, printMargin.value);
+        const pdfBytes = await buildPdf(pngDataUrl, printOrientation.value, printMargin.value, attribution);
         const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
         const file = new File([pdfBlob], 'kleurplaat.pdf', { type: 'application/pdf' });
 
@@ -3127,7 +3162,11 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     safeFilterToggle.addEventListener('change', saveSettingsAndApply);
     advancedToggle.addEventListener('change', saveSettingsAndApply);
     parentDefaultCount.addEventListener('change', saveSettingsAndApply);
-    providerInput.addEventListener('change', () => { showingFavorites = false; updateFavoritesButton(); });
+    providerInput.addEventListener('change', () => {
+      showingFavorites = false;
+      updateFavoritesButton();
+      if (queryInput.value.trim()) search();
+    });
     cropButtons.top.addEventListener('click', () => cropSide('top'));
     cropButtons.right.addEventListener('click', () => cropSide('right'));
     cropButtons.bottom.addEventListener('click', () => cropSide('bottom'));
