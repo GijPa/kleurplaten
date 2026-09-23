@@ -1242,6 +1242,9 @@
       const text = resultText(result);
       if (!/\b(kleurplaat|kleurplaten|coloring|colouring|ausmalbild|ausmalbilder|coloriage)\b/.test(text)) return false;
       const concepts = queryConcepts(query);
+      if (concepts.some(group => group.category === 'eten') &&
+          /\b(animals?|birds?|snakes?|reptiles?|python|lizards?|frogs?|insects?)\b/.test(text) &&
+          !/\b(food|foods|fruit|fruits|vegetables?|desserts?|snacks?|meals?|candy|sweets|bakery|pastry|dairy|beverages?|cuisine|cooking|baking)\b/.test(text)) return false;
       // Some translations have unrelated meanings: falling is not autumn,
       // and the periodic table/table tennis are not furniture.
       if (concepts.some(group => !group.category && group.includes('autumn')) &&
