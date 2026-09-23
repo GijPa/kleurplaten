@@ -388,6 +388,8 @@
     }
 
     .editor-header h2 { margin: 0; font-size: 16px; }
+    #editorMessage { flex: 1; font-size: 12px; line-height: 1.4; color: #344255; }
+    .editor-toolbar #editorRemoveLogoButton { width: auto; padding: 0 10px; font-size: 13px; }
 
     .editor-body {
       min-height: 0;
@@ -1018,6 +1020,7 @@
   <div class="editor-modal" id="editorModal" hidden>
     <div class="editor-header">
       <h2>Afbeelding bewerken</h2>
+      <span id="editorMessage" role="status" aria-live="polite"></span>
       <button class="secondary" id="editorCloseButton" type="button">Sluiten</button>
     </div>
     <div class="editor-body">
@@ -1044,6 +1047,7 @@
         <div class="editor-tool-group">
           <button id="editorContrastButton" type="button" title="Contrast">&#9680;</button>
           <button id="editorBwButton" type="button" title="Zwart-wit">&#9641;</button>
+          <button id="editorRemoveLogoButton" type="button">Logo verwijderen</button>
         </div>
         <div class="editor-tool-group">
           <button id="editorUndoButton" type="button" title="Ongedaan">&#8630;</button>
@@ -1085,6 +1089,7 @@
   </div>
 
   <script src="kleurplaten-catalogus.js"></script>
+  <script src="logo-herkenning.js"></script>
   <script>
     // ===== PROXY & CONFIG =====
     // wsrv.nl is a dedicated image proxy — used only for editor/PDF canvas operations (needs CORS)
@@ -1691,6 +1696,8 @@
     const editorZoomIn = document.getElementById('editorZoomIn');
     const editorContrastButton = document.getElementById('editorContrastButton');
     const editorBwButton = document.getElementById('editorBwButton');
+    const editorRemoveLogoButton = document.getElementById('editorRemoveLogoButton');
+    const editorMessage = document.getElementById('editorMessage');
     const editorSaveButton = document.getElementById('editorSaveButton');
 
     let selectedTile = null;
@@ -2306,6 +2313,13 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         editorTool = 'eraser';
         document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
         updateEditorToolButtons();
+        editorRemoveLogoButton.disabled = !canRemoveLogo(selectedResult);
+        editorRemoveLogoButton.title = editorRemoveLogoButton.disabled
+          ? 'De gebruiksrechten staan automatisch verwijderen niet aantoonbaar toe.'
+          : 'Herken een losstaand SuperColoring-logo op een witte achtergrond.';
+        editorMessage.textContent = editorRemoveLogoButton.disabled
+          ? 'Logo verwijderen is niet beschikbaar bij deze gebruiksrechten.'
+          : 'Logo verwijderen werkt voor een losstaand SuperColoring-logo in een hoek.';
         pushEditorHistory();
         editorModal.hidden = false;
         requestAnimationFrame(() => { renderEditor(); updateEraserPreview(); });
@@ -2318,6 +2332,48 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     }
 
     function closeEditor() { editorModal.hidden = true; }
+
+    function canRemoveLogo(result) {
+      if (!result) return false;
+      if (result.officialOriginal && result.license === 'Public domain') return true;
+      try {
+        const url = new URL(result.licenseUrl);
+        if (url.hostname === 'creativecommons.org' && url.protocol === 'https:'
+            && /^\/(?:licenses\/(?:by|by-sa|by-nc|by-nc-sa)\/(?:1\.0|2\.0|2\.5|3\.0|4\.0)\/(?:deed\.[a-z-]+)?|publicdomain\/zero\/1\.0\/)$/i.test(url.pathname)) return true;
+      } catch { /* Some search providers supply only the standard licence label. */ }
+      return /^(?:(?:cc[ -]?)?(?:by|by-sa|by-nc|by-nc-sa)[ -](?:1\.0|2\.0|2\.5|3\.0|4\.0)|cc0(?: 1\.0)?)$/i.test(result.license || '');
+    }
+
+    function removeEditorLogo() {
+      if (!canRemoveLogo(selectedResult)) {
+        editorMessage.textContent = 'De gebruiksrechten staan automatisch verwijderen niet aantoonbaar toe.';
+        return;
+      }
+      if (editorSourceCanvas.width * editorSourceCanvas.height > 36000000) {
+        editorMessage.textContent = 'Deze afbeelding is te groot voor automatische logoherkenning.';
+        return;
+      }
+      try {
+        const logo = findSuperColoringLogo(editorSourceCanvas);
+        if (!logo) {
+          editorMessage.textContent = 'Geen duidelijk SuperColoring-logo gevonden. De tekening is niet gewijzigd.';
+          return;
+        }
+        if (!logo.safe) {
+          editorMessage.textContent = 'Het logo ligt te dicht bij tekenlijnen of de rand. Automatisch verwijderen zou de tekening kunnen beschadigen.';
+          return;
+        }
+        pushEditorHistory();
+        editorSourceCtx.save();
+        editorSourceCtx.fillStyle = '#fff';
+        editorSourceCtx.fillRect(logo.x, logo.y, logo.width, logo.height);
+        editorSourceCtx.restore();
+        renderEditor();
+        editorMessage.textContent = 'Logo verwijderd. Gebruik Ongedaan om het terug te zetten, of Toepassen om verder te gaan.';
+      } catch {
+        editorMessage.textContent = 'Logoherkenning is niet beschikbaar voor deze afbeelding.';
+      }
+    }
 
     function renderEditor() {
       const W = editorSourceCanvas.width;
@@ -2419,6 +2475,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       editorRedoHistory.push(captureEditorState());
       restoreEditorState(editorHistory.pop());
       renderEditor();
+      editorMessage.textContent = 'Laatste bewerking ongedaan gemaakt.';
     }
 
     function redoEditor() {
@@ -2426,6 +2483,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       editorHistory.push(captureEditorState());
       restoreEditorState(editorRedoHistory.pop());
       renderEditor();
+      editorMessage.textContent = 'Bewerking opnieuw uitgevoerd.';
     }
 
     function captureEditorState() {
@@ -2525,7 +2583,8 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       octx.fillRect(0, 0, out.width, out.height);
       octx.drawImage(editorSourceCanvas, cr.x, cr.y, cr.width, cr.height, 0, 0, out.width, out.height);
       const a = document.createElement('a');
-      a.href = out.toDataURL('image/png');
+      const attribution = attributionText() + ' | Bewerkt in Kleurplaten zoeken. Bewerking aangeboden onder dezelfde licentie.';
+      a.href = attributedCanvas(out, attribution).toDataURL('image/png');
       a.download = 'kleurplaat-bewerkt.png';
       a.click();
     }
@@ -3196,6 +3255,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
     });
     editorContrastButton.addEventListener('click', () => applyImageFilter('contrast'));
     editorBwButton.addEventListener('click', () => applyImageFilter('bw'));
+    editorRemoveLogoButton.addEventListener('click', removeEditorLogo);
     editorSaveButton.addEventListener('click', () => saveEditorPng());
     function updateColorPickerButton() {
       colorPickerButton.style.background = pencilColor;
