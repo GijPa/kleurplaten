@@ -254,42 +254,92 @@
       if (b) { expected++; if (nearby(mask, x, y)) matchedExpected++; }
       if (a && b) intersection++;
     }
-    const score = intersection / Math.max(1, actual + expected - intersection);
-    if (score < .58 || matchedActual / Math.max(1, actual) < .92
-        || matchedExpected / expected < .92) return null;
+    let score = intersection / Math.max(1, actual + expected - intersection);
+    let alignX = 0, alignY = 0;
+    // Small JPEG/resize shifts should not change the identity of the lettering.
+    // Align the patterns instead of globally lowering the acceptance threshold.
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      let overlap = 0;
+      for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+        if (mask[y][x] === '1' && template.colour[y + dy]?.[x + dx] === '1') overlap++;
+      }
+      const alignedScore = overlap / Math.max(1, actual + expected - overlap);
+      if (alignedScore > score) { score = alignedScore; alignX = dx; alignY = dy; }
+    }
+    const precision = matchedActual / Math.max(1, actual), recall = matchedExpected / expected;
+    // At fewer than 70 pixels, JPEG artefacts distort individual grid cells.
+    // Accept these only with stronger agreement in both neighbourhood measures.
+    const smallMatch = w < 70 && score >= .53 && precision >= .96 && recall >= .96;
+    if ((!smallMatch && score < .58) || precision < .92 || recall < .92) return null;
 
-    // JPEG compression can make the tagline nearly grey. A matching variant
-    // includes its known header shape rather than treating it as drawing ink.
-    const extraTop = Math.ceil(w * (template.headerRatio || 0));
-    if (extraTop) {
-      if (top - extraTop < 0) return null;
-      for (let y = top - extraTop; y < top; y++) for (let x = left; x <= right; x++) {
-        const i = (y * width + x) * 4;
-        if (Math.min(data[i], data[i + 1], data[i + 2]) < 180) {
-          ink++;
-          const tx = Math.min(columns - 1, Math.floor((x - left) * columns / w));
-          const ty = Math.min(7, Math.floor((y - top + extraTop) * 8 / extraTop));
-          if (!nearby(template.headerInk, tx, ty)) unexpectedInk++;
+    unexpectedInk = 0;
+    for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) {
+      const i = (y * width + x) * 4;
+      if (Math.min(data[i], data[i + 1], data[i + 2]) >= 180) continue;
+      const tx = Math.min(columns - 1, Math.floor((x - left) * columns / w));
+      const ty = Math.min(rows - 1, Math.floor((y - top) * rows / h));
+      if (!nearby(template.ink, tx + alignX, ty + alignY)) unexpectedInk++;
+    }
+    return completeLogoBox(image, { left, top, right, bottom, w, h },
+      unexpectedInk / Math.max(1, ink) < .035, score);
+  }
+
+  function completeLogoBox(image, core, inkFits, score) {
+    const { data, width, height } = image;
+    const { left, top, right, bottom, w, h } = core;
+    const pad = Math.max(2, Math.ceil(w * .025));
+    // Small source images need only one white pixel beyond the existing padding;
+    // larger images retain the wider separation from nearby drawing lines.
+    const ring = w < 70 ? 1 : Math.max(2, Math.ceil(w * .04));
+    const x0 = Math.max(0, left - pad - ring), x1 = Math.min(width, right + pad + ring + 1);
+    const y0 = Math.max(0, top - Math.ceil(w * .22)), y1 = Math.min(height, bottom + pad + ring + 1);
+    const rw = x1 - x0, rh = y1 - y0;
+    const dark = new Uint8Array(rw * rh);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = (y * width + x) * 4;
+      dark[(y - y0) * rw + x - x0] = Math.min(data[i], data[i + 1], data[i + 2]) < 210 ? 1 : 0;
+    }
+    const components = [];
+    for (let start = 0; start < dark.length; start++) {
+      if (dark[start] !== 1) continue;
+      const queue = [start]; dark[start] = 2;
+      let minX = x1, maxX = x0, minY = y1, maxY = y0;
+      for (let cursor = 0; cursor < queue.length; cursor++) {
+        const cell = queue[cursor], cx = cell % rw, cy = Math.floor(cell / rw);
+        minX = Math.min(minX, x0 + cx); maxX = Math.max(maxX, x0 + cx);
+        minY = Math.min(minY, y0 + cy); maxY = Math.max(maxY, y0 + cy);
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= rw || ny >= rh) continue;
+          const next = ny * rw + nx;
+          if (dark[next] === 1) { dark[next] = 2; queue.push(next); }
         }
       }
+      components.push({ minX, maxX, minY, maxY });
     }
-
-    // Include antialiased edges, then require a white moat around the full mark.
-    // A line crossing the box means that erasing would damage the illustration.
-    const pad = Math.max(2, Math.ceil(w * .025));
-    const box = { x: left - pad, y: top - extraTop - pad, width: w + pad * 2, height: h + extraTop + pad * 2 };
-    const ring = Math.max(2, Math.ceil(w * .04));
-    let safe = unexpectedInk / Math.max(1, ink) < .035;
+    // The faint tagline consists of separate, small letters above the coloured
+    // logo. Include a line of such components, not a fixed amount of whitespace.
+    const letters = components.filter(c => c.minY < top && c.maxY <= top + Math.ceil(w * .035)
+      && c.minY > y0 && c.minX >= left - pad && c.maxX <= right + pad
+      && c.maxY - c.minY + 1 <= Math.ceil(w * .13)
+      && c.maxX - c.minX + 1 <= Math.ceil(w * .22));
+    let textTop = top;
+    if (letters.length >= 3 && Math.max(...letters.map(c => c.maxX)) - Math.min(...letters.map(c => c.minX)) >= w * .35) {
+      textTop = Math.min(top, ...letters.map(c => c.minY));
+    }
+    const box = { x: left - pad, y: textTop - pad, width: w + pad * 2, height: bottom - textTop + 1 + pad * 2 };
+    let safe = inkFits;
+    let reason = inkFits ? '' : 'overlap';
     if (box.x - ring < 0 || box.y - ring < 0 || box.x + box.width + ring > width
-        || box.y + box.height + ring > height) safe = false;
+        || box.y + box.height + ring > height) { safe = false; reason = 'edge'; }
     for (let y = Math.max(0, box.y - ring); y < Math.min(height, box.y + box.height + ring); y++) {
       for (let x = Math.max(0, box.x - ring); x < Math.min(width, box.x + box.width + ring); x++) {
         if (x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height) continue;
         const i = (y * width + x) * 4;
-        if (Math.min(data[i], data[i + 1], data[i + 2]) < 210) safe = false;
+        if (Math.min(data[i], data[i + 1], data[i + 2]) < 210) { safe = false; reason = 'overlap'; }
       }
     }
-    return { ...box, safe, score };
+    return { ...box, safe, score, reason };
   }
 
   window.findSuperColoringLogo = canvas => {
@@ -302,7 +352,8 @@
       // warning wins, so a more permissive variant cannot bypass line protection.
       if (matches.length) {
         matches.sort((a, b) => b.score - a.score);
-        found.push({ ...matches[0], safe: matches.every(match => match.safe) });
+        found.push({ ...matches[0], safe: matches.every(match => match.safe),
+          reason: matches.find(match => !match.safe)?.reason || '' });
       }
     }
     // Multiple matches are ambiguous: never erase several regions automatically.
