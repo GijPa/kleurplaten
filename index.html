@@ -870,6 +870,20 @@
       .editor-tool-group { border-right: 0; padding-right: 0; }
     }
 
+    /* Keep the main actions compact; secondary print settings open via ?. */
+    .viewer-actions { gap: 4px; padding: 8px; }
+    .viewer-actions > button:not(.icon-button) {
+      flex: 0 0 auto; padding: 6px 5px; font-size: 13px; white-space: nowrap;
+    }
+    .viewer-actions .icon-button { width: 34px; min-width: 34px; height: 36px; }
+    #moreOptionsBtn { display: inline-flex; }
+    .viewer-actions .print-options, .viewer-actions #sourceLink { display: none; }
+    .viewer-actions.extras-open .print-options { display: flex !important; }
+    .viewer-actions.extras-open #sourceLink:not([hidden]) { display: inline !important; }
+    @media (max-width: 560px) {
+      .viewer-actions > button:not(.icon-button) { flex: 0 0 auto; padding: 6px 7px; }
+    }
+
     @media print {
       @page { size: A4 portrait; margin: 10mm; }
       body { display: block; background: #fff; width: 100%; height: 100vh; }
@@ -972,6 +986,7 @@
         <button id="editButton" type="button" disabled>✏️ Bewerk</button>
         <button class="icon-button" id="viewerFavoriteButton" type="button" disabled title="Favoriet">&#9825;</button>
         <button class="danger" id="clearButton" type="button" disabled>🗑️ Wis</button>
+        <button id="viewerRemoveLogoButton" type="button" disabled title="Wis het herkende logo, ook als er tekenlijnen doorheen lopen">Wis logo</button>
         <button class="secondary" id="moreOptionsBtn" type="button" title="Meer opties">⋯</button>
         <div class="print-options">
           <label>
@@ -1661,6 +1676,7 @@
     const editButton = document.getElementById('editButton');
     const viewerFavoriteButton = document.getElementById('viewerFavoriteButton');
     const clearButton = document.getElementById('clearButton');
+    const viewerRemoveLogoButton = document.getElementById('viewerRemoveLogoButton');
     const sourceLink = document.getElementById('sourceLink');
     const printOrientation = document.getElementById('printOrientation');
     const printMargin = document.getElementById('printMargin');
@@ -2012,6 +2028,7 @@
       editButton.disabled = false;
       viewerFavoriteButton.disabled = false;
       clearButton.disabled = false;
+      viewerRemoveLogoButton.disabled = false;
       setCropButtonsEnabled(true);
       updateFavoriteUi();
       setStatus('Kleurplaat geopend in de viewer.');
@@ -2040,12 +2057,13 @@
       return null;
     }
 
-    async function cleanSelectedLogo(result, controller) {
+    async function cleanSelectedLogo(result, controller, force = false) {
+      const imageUrl = currentImageUrl;
       const isCurrent = () => !controller.signal.aborted && selectedResult === result
-        && currentImageUrl === result.image && editorModal.hidden;
+        && currentImageUrl === imageUrl && editorModal.hidden;
       showLogoStatus('Logo wordt gecontroleerd?');
       try {
-        const image = await loadLogoImage(result.image, controller.signal);
+        const image = await loadLogoImage(imageUrl, controller.signal);
         if (!isCurrent()) return;
         if (!image) { showLogoStatus('Logo niet gecontroleerd: de afbeelding kon niet worden geladen voor bewerking.'); return; }
         const width = image.naturalWidth || image.width, height = image.naturalHeight || image.height;
@@ -2058,7 +2076,7 @@
         context.drawImage(image, 0, 0);
         const logo = findSuperColoringLogo(canvas);
         if (!isCurrent()) return;
-        if (!logo?.safe) { showLogoStatus(logoSkipReason(logo)); return; }
+        if (!logo || (!force && !logo.safe)) { showLogoStatus(logoSkipReason(logo)); return; }
         context.fillStyle = '#fff';
         context.fillRect(logo.x, logo.y, logo.width, logo.height);
         const cleanedUrl = canvas.toDataURL('image/png');
@@ -2071,13 +2089,25 @@
         renderViewerCanvas();
         viewerInfo.textContent = attributionText(result);
         _sharePdfCache = null;
-        showLogoStatus('Logo automatisch verwijderd.');
-        setStatus('Kleurplaat geopend; logo automatisch verwijderd.');
+        showLogoStatus(force ? 'Logo verwijderd.' : 'Logo automatisch verwijderd.');
+        setStatus(force ? 'Logo verwijderd.' : 'Kleurplaat geopend; logo automatisch verwijderd.');
       } catch {
         if (isCurrent()) showLogoStatus('Logo niet gecontroleerd: bewerking van deze afbeelding is niet beschikbaar.');
       }
       finally {
         if (selectionLogoController === controller) selectionLogoController = null;
+      }
+    }
+
+    async function removeViewerLogo() {
+      if (!selectedResult || !currentImageUrl || !editorModal.hidden) return;
+      selectionLogoController?.abort();
+      const controller = new AbortController();
+      selectionLogoController = controller;
+      viewerRemoveLogoButton.disabled = true;
+      try { await cleanSelectedLogo(selectedResult, controller, true); }
+      finally {
+        if (!controller.signal.aborted) viewerRemoveLogoButton.disabled = !selectedResult;
       }
     }
 
@@ -2104,6 +2134,7 @@
       viewerFavoriteButton.textContent = '♡';
       viewerFavoriteButton.classList.remove('favorite-active');
       clearButton.disabled = true;
+      viewerRemoveLogoButton.disabled = true;
       currentImageUrl = '';
       resetCrop();
       setCropButtonsEnabled(false);
@@ -2365,6 +2396,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       if (!currentImageUrl) return;
       selectionLogoController?.abort();
       selectionLogoController = null;
+      viewerRemoveLogoButton.disabled = !selectedResult;
       try {
         setStatus('Bewerker laden...');
         // Use source pixels first: proxy recompression can obscure small logos.
@@ -3239,6 +3271,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       this.textContent = open ? '✕' : '⋯';
       this.title = open ? 'Sluiten' : 'Meer opties';
     });
+    viewerRemoveLogoButton.addEventListener('click', removeViewerLogo);
     editButton.addEventListener('click', () => openEditor());
     favoritesViewButton.addEventListener('click', () => {
       searchController?.abort();
