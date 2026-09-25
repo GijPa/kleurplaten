@@ -2365,20 +2365,11 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
       if (!currentImageUrl) return;
       selectionLogoController?.abort();
       selectionLogoController = null;
-      let objUrl = null;
       try {
         setStatus('Bewerker laden...');
-        let image;
-        if (currentImageUrl.startsWith('data:')) {
-          image = await loadImg(currentImageUrl);
-        } else {
-          // Haal image op via fetch (met timeout) en maak een object URL
-          // Betrouwbaarder dan crossOrigin op <img>: geen CORS-header problemen
-          const resp = await timedFetch(imageProxyUrl(currentImageUrl));
-          if (!resp.ok) throw new Error(`Afbeelding laden mislukt (HTTP ${resp.status})`);
-          objUrl = URL.createObjectURL(await resp.blob());
-          image = await loadImg(objUrl);
-        }
+        // Use source pixels first: proxy recompression can obscure small logos.
+        const image = await loadLogoImage(currentImageUrl, new AbortController().signal);
+        if (!image) throw new Error('Afbeelding laden mislukt.');
         const width = image.naturalWidth || image.width;
         const height = image.naturalHeight || image.height;
         editorSourceCanvas.width = width;
@@ -2396,7 +2387,7 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         document.getElementById('toolSizeLabel').textContent = 'Gumgrootte';
         updateEditorToolButtons();
         editorRemoveLogoButton.disabled = false;
-        editorRemoveLogoButton.title = 'Herken een losstaand SuperColoring-logo op een witte achtergrond.';
+        editorRemoveLogoButton.title = 'Verwijder een herkend SuperColoring-logo, ook bij overlappende tekenlijnen.';
         editorMessage.textContent = 'Logo verwijderen wist een herkend SuperColoring-logo, ook bij overlap. Tekenlijnen binnen het logovlak worden ook gewist. Met Ongedaan herstel je de tekening.';
         pushEditorHistory();
         editorModal.hidden = false;
@@ -2404,8 +2395,6 @@ i.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print();},15
         setStatus('Bewerker geopend.');
       } catch (e) {
         setStatus(`Bewerken niet beschikbaar: ${e.message}`);
-      } finally {
-        if (objUrl) URL.revokeObjectURL(objUrl);
       }
     }
 
